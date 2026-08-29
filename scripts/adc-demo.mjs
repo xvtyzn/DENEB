@@ -5,7 +5,7 @@
  *
  * The linker artwork comes from scripts/lib/linkers.mjs, which runs each
  * SMILES through OpenChemLib — a devDependency of this repo only, since
- * antibody-viewer draws the chemistry you supply rather than depicting it.
+ * deneb draws the chemistry you supply rather than depicting it.
  *
  *   npm run adc-demo
  */
@@ -137,7 +137,7 @@ const card = ({ label, note, construct, options }) => `
 
 const html = `<!doctype html>
 <meta charset="utf-8">
-<title>antibody-viewer — ADC payloads</title>
+<title>deneb — ADC payloads</title>
 <style>
   :root { color-scheme: light; }
   body { margin: 0; padding: 24px; background: #f6f7f9; font: 14px/1.55 ui-sans-serif, system-ui, sans-serif; color: #1c222b; }
@@ -155,7 +155,7 @@ const html = `<!doctype html>
 </style>
 <h1>ADC payloads</h1>
 <p class="lede">
-  antibody-viewer draws the conjugation — the linker stalk, the payload glyph, the DAR
+  deneb draws the conjugation — the linker stalk, the payload glyph, the DAR
   and the site — and will place a chemical structure you supply. It does not depict
   chemistry itself. Below, each structure was generated from a SMILES string with
   OpenChemLib (a devDependency of this repo, not of the library) in

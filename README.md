@@ -1,6 +1,7 @@
-# antibody-viewer
+# DENEB
 
-Declarative SVG diagrams of antibody formats — for embedding in a web app.
+**D**rawing **E**ngine for **N**otated, **E**ngineered **B**iologics — declarative
+SVG diagrams of antibody formats, for embedding in a web app.
 
 Give it a description of the chains and domains of a molecule and it draws the
 cartoon: Fab arms on an Fc stem, tandem scFvs, diabodies, appended IgGs,
@@ -18,7 +19,7 @@ produce one.** Feed it the output of your own HMM / ML domain caller.
 
 - Zero runtime dependencies; the core is framework-agnostic and renders to a
   plain SVG string, so it also works in Node for SSR, static export and tests.
-- React components (`antibody-viewer/react`) render the *same* scene as real
+- React components (`deneb/react`) render the *same* scene as real
   elements, so `onClick` / `onMouseEnter` land on the domain groups directly —
   no `dangerouslySetInnerHTML`.
 - 49 bundled presets covering the common bispecific, fragment and ADC formats.
@@ -26,15 +27,15 @@ produce one.** Feed it the output of your own HMM / ML domain caller.
 ## Install
 
 ```sh
-npm install antibody-viewer
+npm install deneb
 ```
 
-React is an optional peer dependency; you only need it for `antibody-viewer/react`.
+React is an optional peer dependency; you only need it for `deneb/react`.
 
 ## Quick start
 
 ```ts
-import { renderSVG } from 'antibody-viewer';
+import { renderSVG } from 'deneb';
 
 const { svg, layout, scene } = renderSVG({
   name: 'IgG(kih) 1+1 bispecific',
@@ -69,7 +70,7 @@ const { svg, layout, scene } = renderSVG({
 In React:
 
 ```tsx
-import { AntibodyViewer } from 'antibody-viewer/react';
+import { AntibodyViewer } from 'deneb/react';
 
 <AntibodyViewer
   construct={spec}
@@ -102,7 +103,7 @@ LC2: VL(HER2)-CL
 ```
 
 ```ts
-import { parseDSL, stringifyDSL, renderSVG } from 'antibody-viewer';
+import { parseDSL, stringifyDSL, renderSVG } from 'deneb';
 renderSVG(parseDSL(source));
 ```
 
@@ -378,20 +379,20 @@ notations — checked by
 
 | Import | Gzipped | What it is |
 | --- | --- | --- |
-| `antibody-viewer` | 26 kB | model, notation, layout, renderers |
-| `antibody-viewer/react` | 30 kB | the components |
-| `antibody-viewer/presets` | 11 kB | the 49 bundled formats |
-| `antibody-viewer/lint` | 11 kB | design checks |
-| `antibody-viewer/diff` | 10 kB | parent/variant comparison |
-| `antibody-viewer/panel` | 29 kB | multi-molecule figures |
-| `antibody-viewer/import` | 3 kB | ANARCI / IgBLAST adapters |
-| `antibody-viewer/abml` | 13 kB | AbML notation, read and written |
-| `antibody-viewer/veritas` | 13 kB | VERITAS format names, read and written |
+| `deneb` | 26 kB | model, notation, layout, renderers |
+| `deneb/react` | 30 kB | the components |
+| `deneb/presets` | 11 kB | the 49 bundled formats |
+| `deneb/lint` | 11 kB | design checks |
+| `deneb/diff` | 10 kB | parent/variant comparison |
+| `deneb/panel` | 29 kB | multi-molecule figures |
+| `deneb/import` | 3 kB | ANARCI / IgBLAST adapters |
+| `deneb/abml` | 13 kB | AbML notation, read and written |
+| `deneb/veritas` | 13 kB | VERITAS format names, read and written |
 
 ### Design checks
 
 ```ts
-import { lint } from 'antibody-viewer/lint';
+import { lint } from 'deneb/lint';
 
 for (const finding of lint(construct)) {
   console.log(finding.level, finding.rule, finding.message, finding.hint);
@@ -414,8 +415,8 @@ Severity is adjustable the same way.
 
 
 ```ts
-import { diff } from 'antibody-viewer/diff';
-import { renderComparison } from 'antibody-viewer/panel';
+import { diff } from 'deneb/diff';
+import { renderComparison } from 'deneb/panel';
 
 const { svg, changes } = renderComparison(parent, variant, { labels: ['parent', 'v2'] });
 ```
@@ -434,7 +435,7 @@ and the legend is built once from the union of what they contain.
 
 
 ```ts
-import { renderPanel } from 'antibody-viewer/panel';
+import { renderPanel } from 'deneb/panel';
 
 const { svg } = renderPanel(
   formats.map((f) => ({ construct: f.construct, label: f.name })),
@@ -451,7 +452,7 @@ and there is one legend rather than one per cell.
 ### Starting from a sequence
 
 ```ts
-import { fromANARCI, fromIgBLAST } from 'antibody-viewer/import';
+import { fromANARCI, fromIgBLAST } from 'deneb/import';
 
 const { construct, diagnostics } = fromANARCI(csv, { sequences: { HC: heavy, LC: light } });
 ```
@@ -473,7 +474,7 @@ unnamed segment with its range intact rather than guessed at.
 ### AbML, read and written
 
 ```ts
-import { parseAbML, toAbML } from 'antibody-viewer/abml';
+import { parseAbML, toAbML } from 'deneb/abml';
 
 const { construct, diagnostics } = parseAbML('VH.a(1:6)-CH1(2:7){1}-H(3:10){2}-CH2(4:11)-CH3(5:12) | …');
 const back = toAbML(construct);
@@ -510,7 +511,7 @@ is normally the same string.
 ### VERITAS, named and read
 
 ```ts
-import { toVeritas, parseVeritas } from 'antibody-viewer/veritas';
+import { toVeritas, parseVeritas } from 'deneb/veritas';
 
 const { name, notes } = toVeritas(construct);
 // "[(CD3)Fab*(HER2)Fab]-heteroFc(KiH)"
@@ -549,7 +550,7 @@ For anything richer than the architecture, use the DSL.
 ### The sequence, coloured like the diagram
 
 ```tsx
-import { AntibodyViewer, AntibodySequence } from 'antibody-viewer/react';
+import { AntibodyViewer, AntibodySequence } from 'deneb/react';
 
 <AntibodyViewer construct={spec} highlight={lit} onDomainHover={setHovered} />
 <AntibodySequence construct={spec} highlight={lit} onResidueClick={inspect} />
@@ -562,7 +563,7 @@ either knowing about the other. CDRs from `Domain.regions` are underlined.
 ## API
 
 ```ts
-// antibody-viewer — model + notation
+// deneb — model + notation
 normalize(construct, { theme? }): NormalizedConstruct
 parseDSL(source): Construct
 stringifyDSL(construct): string
@@ -577,31 +578,31 @@ renderLinear(input, options): { svg, scene, construct }
 renderLegend(input, options): { svg, scene }
 toSVGString(scene): string
 
-// antibody-viewer/presets
+// deneb/presets
 presetNames(): string[]
 getPreset(name): Construct
 
-// antibody-viewer/lint
+// deneb/lint
 lint(construct, options?): LintFinding[]
 LINT_RULES: readonly LintRule[]
 
-// antibody-viewer/diff
+// deneb/diff
 diff(before, after): DiffResult
 
-// antibody-viewer/panel
+// deneb/panel
 renderPanel(items, options?): { svg, scene }
 renderComparison(before, after, options?): { svg, scene, changes }
 
-// antibody-viewer/import
+// deneb/import
 fromANARCI(csv, options?): { construct, diagnostics }
 fromIgBLAST(airrTsv, options?): { construct, diagnostics }
 identifyConstantRegion(sequence, from, kind, minIdentity?): ConstantMatch | null
 
-// antibody-viewer/abml
+// deneb/abml
 parseAbML(source): { construct, diagnostics }
 toAbML(construct, { multiline?, includeTargetNames? }): string
 
-// antibody-viewer/veritas
+// deneb/veritas
 parseVeritas(name): { construct, diagnostics }
 toVeritas(construct, { includeTargets?, includeStrategy? }): { name, notes }
 ```
@@ -661,9 +662,9 @@ follow.
 
 [AbML and abYdraw](https://www.tandfonline.com/doi/full/10.1080/19420862.2022.2101183)
 are a published notation and renderer for antibody formats; AbML is read and
-written here through `antibody-viewer/abml`.
+written here through `deneb/abml`.
 [VERITAS](https://doi.org/10.1080/19420862.2023.2207232) is Amgen's naming
-scheme for the same formats, through `antibody-viewer/veritas`. The two answer
+scheme for the same formats, through `deneb/veritas`. The two answer
 different questions — AbML writes the molecule, VERITAS names the architecture.
 [BioGlyph](https://bioglyph.app/) covers the same ground commercially.
 

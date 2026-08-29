@@ -7,7 +7,7 @@ import { parseDSL } from '../dsl/parse';
  *
  * There is deliberately no `preset` name here: resolving one would tie every
  * page that renders a diagram to the whole preset catalogue. Pass the construct
- * instead — `construct={getPreset('igg-kih')}` from `antibody-viewer/presets` —
+ * instead — `construct={getPreset('igg-kih')}` from `deneb/presets` —
  * and pages that never touch the presets never load them.
  */
 export interface ConstructSource {
@@ -23,7 +23,7 @@ export function resolveSource(source: ConstructSource): Construct | NormalizedCo
   if (source.construct) return source.construct;
   if (source.dsl != null) return parseDSL(source.dsl);
   throw new ConstructSourceError(
-    'Provide `construct` or `dsl`. For a bundled format, import getPreset from "antibody-viewer/presets".',
+    'Provide `construct` or `dsl`. For a bundled format, import getPreset from "deneb/presets".',
   );
 }
 

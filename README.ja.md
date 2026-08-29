@@ -1,7 +1,8 @@
-# antibody-viewer（日本語）
+# DENEB（日本語）
 
-抗体フォーマットを SVG のポンチ絵として描くライブラリです。フロントエンドに
-そのまま組み込めます。英語版の詳細は [README.md](README.md) を参照してください。
+**D**rawing **E**ngine for **N**otated, **E**ngineered **B**iologics — 抗体フォーマットを
+SVG のポンチ絵として描くライブラリです。フロントエンドにそのまま組み込めます。
+英語版の詳細は [README.md](README.md) を参照してください。
 
 ## これは何をするものか
 
@@ -21,7 +22,7 @@
 
 - ランタイム依存ゼロ。コアはフレームワーク非依存で SVG 文字列を返すため、
   Node 上でも動きます（SSR・静的書き出し・スナップショットテスト）。
-- React コンポーネント（`antibody-viewer/react`）は**同じ Scene** を React 要素
+- React コンポーネント（`deneb/react`）は**同じ Scene** を React 要素
   として描くので、`onClick` / `onMouseEnter` がドメインの `<g>` に直接届きます。
   `dangerouslySetInnerHTML` は使いません。
 - 主要なバイスペシフィック・フラグメント・ADC フォーマット 49 種をプリセットとして同梱。
@@ -29,7 +30,7 @@
 ## 使い方
 
 ```ts
-import { renderSVG, parseDSL } from 'antibody-viewer';
+import { renderSVG, parseDSL } from 'deneb';
 
 // 正式な入力は構造化 JSON（HMM/ML パイプラインの出力をそのまま入れられます）
 const { svg, layout } = renderSVG({
@@ -58,7 +59,7 @@ renderSVG(parseDSL(`
 React では:
 
 ```tsx
-import { AntibodyViewer } from 'antibody-viewer/react';
+import { AntibodyViewer } from 'deneb/react';
 
 <AntibodyViewer
   construct={spec}
@@ -287,20 +288,20 @@ importer・2 つの記法のいずれにも到達しません（ソースは `te
 
 | import | gzip | 内容 |
 | --- | --- | --- |
-| `antibody-viewer` | 26 kB | モデル・記法・レイアウト・描画 |
-| `antibody-viewer/react` | 30 kB | コンポーネント |
-| `antibody-viewer/presets` | 11 kB | 同梱 49 フォーマット |
-| `antibody-viewer/lint` | 11 kB | 設計チェック |
-| `antibody-viewer/diff` | 10 kB | 親／変異体の比較 |
-| `antibody-viewer/panel` | 29 kB | 複数分子の図版 |
-| `antibody-viewer/import` | 3 kB | ANARCI / IgBLAST アダプタ |
-| `antibody-viewer/abml` | 13 kB | AbML 記法の読み書き |
-| `antibody-viewer/veritas` | 13 kB | VERITAS フォーマット名の読み書き |
+| `deneb` | 26 kB | モデル・記法・レイアウト・描画 |
+| `deneb/react` | 30 kB | コンポーネント |
+| `deneb/presets` | 11 kB | 同梱 49 フォーマット |
+| `deneb/lint` | 11 kB | 設計チェック |
+| `deneb/diff` | 10 kB | 親／変異体の比較 |
+| `deneb/panel` | 29 kB | 複数分子の図版 |
+| `deneb/import` | 3 kB | ANARCI / IgBLAST アダプタ |
+| `deneb/abml` | 13 kB | AbML 記法の読み書き |
+| `deneb/veritas` | 13 kB | VERITAS フォーマット名の読み書き |
 
 ### 設計チェック（lint）
 
 ```ts
-import { lint } from 'antibody-viewer/lint';
+import { lint } from 'deneb/lint';
 
 for (const f of lint(construct)) console.log(f.level, f.rule, f.message, f.hint);
 ```
@@ -320,7 +321,7 @@ IgG4 のヒンジが安定化されていない、DAR が化学的に到達し�
 
 
 ```ts
-import { renderComparison } from 'antibody-viewer/panel';
+import { renderComparison } from 'deneb/panel';
 
 const { svg, changes } = renderComparison(parent, variant, { labels: ['親', 'v2'] });
 ```
@@ -337,7 +338,7 @@ const { svg, changes } = renderComparison(parent, variant, { labels: ['親', 'v2
 
 
 ```ts
-import { renderPanel } from 'antibody-viewer/panel';
+import { renderPanel } from 'deneb/panel';
 
 const { svg } = renderPanel(items, { columns: 3, title: 'Bispecific formats' });
 ```
@@ -350,7 +351,7 @@ const { svg } = renderPanel(items, { columns: 3, title: 'Bispecific formats' });
 ### 配列から始める
 
 ```ts
-import { fromANARCI, fromIgBLAST } from 'antibody-viewer/import';
+import { fromANARCI, fromIgBLAST } from 'deneb/import';
 
 const { construct, diagnostics } = fromANARCI(csv, { sequences: { HC: heavy, LC: light } });
 ```
@@ -369,7 +370,7 @@ Kabat / Chothia の範囲を記憶で書くと、他人の CDR を黙って誤�
 ### AbML の読み書き
 
 ```ts
-import { parseAbML, toAbML } from 'antibody-viewer/abml';
+import { parseAbML, toAbML } from 'deneb/abml';
 
 const { construct, diagnostics } = parseAbML('VH.a(1:6)-CH1(2:7){1}-H(3:10){2}-CH2(4:11)-CH3(5:12) | …');
 const back = toAbML(construct);
@@ -402,7 +403,7 @@ const back = toAbML(construct);
 ### VERITAS の命名と読み取り
 
 ```ts
-import { toVeritas, parseVeritas } from 'antibody-viewer/veritas';
+import { toVeritas, parseVeritas } from 'deneb/veritas';
 
 const { name, notes } = toVeritas(construct);
 // "[(CD3)Fab*(HER2)Fab]-heteroFc(KiH)"
@@ -482,9 +483,9 @@ OpenChemLib（このリポジトリの devDependency であり、ライブラリ
 
 [AbML / abYdraw](https://www.tandfonline.com/doi/full/10.1080/19420862.2022.2101183)
 は抗体フォーマットの記法とレンダラの公開された実装です。AbML は
-`antibody-viewer/abml` で読み書きできます。
+`deneb/abml` で読み書きできます。
 [VERITAS](https://doi.org/10.1080/19420862.2023.2207232) は Amgen による同じ領域の
-命名体系で、`antibody-viewer/veritas` で扱えます。両者は答える問いが違います —
+命名体系で、`deneb/veritas` で扱えます。両者は答える問いが違います —
 AbML は**分子を書き**、VERITAS は**アーキテクチャに名前を付けます**。
 [BioGlyph](https://bioglyph.app/) は同じ領域の商用ツールです。
 

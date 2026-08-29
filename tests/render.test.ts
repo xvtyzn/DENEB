@@ -54,21 +54,21 @@ describe('renderSVG', () => {
     expect(svg).toContain('LALA-PG (Fc-silenced)');
     expect(svg).toContain('knob (T366W)');
     // knob, hole and LALA-PG appear once each even though four domains carry them.
-    expect((svg.match(/class="av-legend-marker"/g) ?? []).length).toBe(3);
-    expect((svg.match(/class="av-legend-swatch"/g) ?? []).length).toBe(2);
+    expect((svg.match(/class="dn-legend-marker"/g) ?? []).length).toBe(3);
+    expect((svg.match(/class="dn-legend-swatch"/g) ?? []).length).toBe(2);
   });
 
   it('omits the legend and title when asked', () => {
     const { svg } = renderSVG(getPreset('igg-kih'), { showLegend: false, showTitle: false });
-    expect(svg).not.toContain('av-legend');
-    expect(svg).not.toContain('av-title');
+    expect(svg).not.toContain('dn-legend');
+    expect(svg).not.toContain('dn-title');
   });
 
   it('rings highlighted domains', () => {
     const plain = renderSVG(getPreset('igg-kih'));
     const lit = renderSVG(getPreset('igg-kih'), { highlight: ['spec:CD3'] });
-    expect(plain.svg).not.toContain('av-highlight');
-    const rings = (lit.svg.match(/av-highlight/g) ?? []).length;
+    expect(plain.svg).not.toContain('dn-highlight');
+    const rings = (lit.svg.match(/dn-highlight/g) ?? []).length;
     expect(rings).toBe(2); // VH and VL of the CD3 arm
   });
 
@@ -76,7 +76,7 @@ describe('renderSVG', () => {
     const forms = ['HC1:CH3', 'chain:LC1', 'mod:knob', 'spec:HER2'];
     for (const form of forms) {
       const { svg } = renderSVG(getPreset('igg-kih'), { highlight: [form] });
-      expect(svg, form).toContain('av-highlight');
+      expect(svg, form).toContain('dn-highlight');
     }
   });
 
@@ -132,12 +132,12 @@ describe('renderLinear', () => {
       ],
       layout: { skeleton: 'y' },
     });
-    expect(svg).toContain('class="av-linear-modification"');
+    expect(svg).toContain('class="dn-linear-modification"');
   });
 
   it('falls back to equal shares without residue ranges', () => {
     const { svg } = renderLinear(getPreset('bite'), { trackWidth: 400 });
-    expect(svg).toContain('class="av-linear-domain"');
+    expect(svg).toContain('class="dn-linear-domain"');
     expect(svg).not.toContain('aa<');
   });
 });

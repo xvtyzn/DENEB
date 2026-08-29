@@ -1,7 +1,7 @@
 /**
  * Linker artwork for the ADC examples.
  *
- * antibody-viewer does not depict chemistry itself — it takes a drawing you
+ * deneb does not depict chemistry itself — it takes a drawing you
  * supply. This module shows the usual way to produce one: run the linker's
  * SMILES through a toolkit (OpenChemLib here, a devDependency of this repo
  * only) and hand the resulting SVG to `payload.structure`.
@@ -37,7 +37,7 @@ export const LINKERS = {
   },
 };
 
-/** SMILES -> the `structure` object antibody-viewer draws. */
+/** SMILES -> the `structure` object deneb draws. */
 export function structureFor(name, width = 150, height = 104) {
   const entry = LINKERS[name];
   if (!entry) return undefined;
@@ -50,7 +50,7 @@ export function structureFor(name, width = 150, height = 104) {
   const inner = svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
   const box = tightBox(inner);
   return {
-    // Strip the toolkit's own <svg> wrapper: antibody-viewer supplies one sized
+    // Strip the toolkit's own <svg> wrapper: deneb supplies one sized
     // to the box it reserves in the diagram, cropped to the drawing so the bond
     // meets the molecule rather than a margin.
     svg: inner,

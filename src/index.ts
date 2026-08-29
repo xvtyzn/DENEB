@@ -103,6 +103,6 @@ export {
 
 // Presets are NOT re-exported here on purpose. They are ~7 kB of format
 // definitions that a page embedding the viewer has no reason to carry; import
-// them from "antibody-viewer/presets" when you want them.
+// them from "deneb/presets" when you want them.
 
 export { svgToPngDataUrl, downloadSVG, downloadPNG } from './export/png';

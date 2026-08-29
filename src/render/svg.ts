@@ -36,7 +36,7 @@ export function toSVGString(scene: Scene): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${width} ${height}"`,
     ` width="${scene.width}" height="${scene.height}"`,
-    ` role="img" class="antibody-viewer">`,
+    ` role="img" class="deneb">`,
     body.join(''),
     `</svg>`,
   ].join('');

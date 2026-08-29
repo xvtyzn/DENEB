@@ -30,7 +30,7 @@ describe('conjugated payloads', () => {
     const { svg } = renderSVG(getPreset('adc-igg'));
     // Two light chains, two copies each.
     expect((svg.match(/data-payload="MMAE"/g) ?? []).length).toBeGreaterThanOrEqual(4);
-    expect((svg.match(/class="av-payload-label"/g) ?? []).length).toBe(2);
+    expect((svg.match(/class="dn-payload-label"/g) ?? []).length).toBe(2);
     expect(svg).toContain('>MMAE<');
   });
 
@@ -62,7 +62,7 @@ describe('conjugated payloads', () => {
       {},
     ).svg;
     expect(nonCleavable).toContain('stroke-dasharray');
-    expect(cleavable).not.toContain('av-payload-label');
+    expect(cleavable).not.toContain('dn-payload-label');
   });
 
   it('honours the payload shape and colour', () => {
@@ -88,7 +88,7 @@ describe('conjugated payloads', () => {
 
   it('can suppress payload names', () => {
     const { svg } = renderSVG(getPreset('adc-igg'), { showPayloadNames: false });
-    expect(svg).not.toContain('av-payload-label');
+    expect(svg).not.toContain('dn-payload-label');
     expect(svg).toContain('data-payload="MMAE"');
   });
 });
@@ -115,25 +115,25 @@ describe('payload structures', () => {
   it('draws a captioned thumbnail in the legend by default', () => {
     const { svg } = renderSVG(construct);
     expect(svg).toContain('Structures');
-    expect(svg).toContain('av-structure-frame');
+    expect(svg).toContain('dn-structure-frame');
     expect(svg).toContain('<circle cx="5" cy="5" r="4"/>');
     expect(svg).toContain('viewBox="0 0 10 10"');
     // The payload glyph still marks the conjugation site on the molecule.
-    expect((svg.match(/class="av-marker"/g) ?? []).length).toBeGreaterThan(0);
+    expect((svg.match(/class="dn-marker"/g) ?? []).length).toBeGreaterThan(0);
   });
 
   it('replaces the payload glyph with a framed panel on the linker', () => {
     const { svg } = renderSVG(construct, { showStructures: 'inline' });
-    expect(svg).toContain('av-payload-structure');
+    expect(svg).toContain('dn-payload-structure');
     // One drawing however many copies are conjugated.
-    expect((svg.match(/class="av-structure"/g) ?? []).length).toBe(1);
+    expect((svg.match(/class="dn-structure"/g) ?? []).length).toBe(1);
     // The panel is counter-rotated so the chemistry stays upright.
-    expect(svg).toMatch(/av-payload-structure[^>]*rotate\(/);
+    expect(svg).toMatch(/dn-payload-structure[^>]*rotate\(/);
   });
 
   it('can be turned off entirely', () => {
     const { svg } = renderSVG(construct, { showStructures: 'none' });
-    expect(svg).not.toContain('av-structure');
+    expect(svg).not.toContain('dn-structure');
     expect(svg).toContain('data-payload="MMAE"');
   });
 
@@ -202,7 +202,7 @@ describe('payload structures', () => {
     expect(svg).toContain('x="-80"');
     expect(svg).toContain('y="-10"');
     // The drawing carries its own sulfur, so no second atom label is added.
-    expect(svg).not.toContain('av-attachment-label');
+    expect(svg).not.toContain('dn-attachment-label');
   });
 
   it('writes the attachment atom on the bond when there is no structure', () => {
@@ -222,7 +222,7 @@ describe('payload structures', () => {
         },
       ],
     });
-    expect(svg).toContain('av-attachment-label');
+    expect(svg).toContain('dn-attachment-label');
     expect(svg).toContain('>NH<');
   });
 
@@ -253,7 +253,7 @@ describe('payload structures', () => {
       },
       { showStructures: 'inline' },
     );
-    expect((svg.match(/class="av-payload-bracket"/g) ?? []).length).toBe(2);
+    expect((svg.match(/class="dn-payload-bracket"/g) ?? []).length).toBe(2);
     expect(svg).toContain('>n = 8<');
   });
 
@@ -280,7 +280,7 @@ describe('payload structures', () => {
       ],
     };
     const once = renderSVG(twoSites, { showStructures: 'inline', showLegend: false });
-    expect((once.svg.match(/class="av-structure"/g) ?? []).length).toBe(1);
+    expect((once.svg.match(/class="dn-structure"/g) ?? []).length).toBe(1);
     // The other site still shows where the conjugation is.
     expect((once.svg.match(/data-modification-type="drug"/g) ?? []).length).toBeGreaterThan(1);
 
@@ -289,7 +289,7 @@ describe('payload structures', () => {
       repeatStructures: true,
       showLegend: false,
     });
-    expect((both.svg.match(/class="av-structure"/g) ?? []).length).toBe(2);
+    expect((both.svg.match(/class="dn-structure"/g) ?? []).length).toBe(2);
   });
 
   it('keeps atom labels readable when a mirrored drawing is asked for', () => {
@@ -400,7 +400,7 @@ describe('modification catalog', () => {
         ],
       });
       expect(svg, type).toContain(`data-modification-type="${type}"`);
-      expect((svg.match(/class="av-legend-marker"/g) ?? []).length, type).toBe(1);
+      expect((svg.match(/class="dn-legend-marker"/g) ?? []).length, type).toBe(1);
     }
   });
 
@@ -478,7 +478,7 @@ describe('single-chain Fv direction', () => {
   it('marks the free termini when asked', () => {
     const plain = renderSVG(parseDSL(vhvl)).svg;
     const marked = renderSVG(parseDSL(vhvl), { showTermini: true }).svg;
-    expect(plain).not.toContain('av-terminus');
+    expect(plain).not.toContain('dn-terminus');
     expect(marked).toContain('data-terminus="N"');
     expect(marked).toContain('data-terminus="C"');
   });
@@ -487,8 +487,8 @@ describe('single-chain Fv direction', () => {
 describe('glyph style', () => {
   it('draws every domain as a box, with no labels by default', () => {
     const { svg } = renderSVG(getPreset('igg-kih'));
-    expect(svg).not.toContain('av-domain-label');
-    expect(renderSVG(getPreset('igg-kih'), { showLabels: true }).svg).toContain('av-domain-label');
+    expect(svg).not.toContain('dn-domain-label');
+    expect(renderSVG(getPreset('igg-kih'), { showLabels: true }).svg).toContain('dn-domain-label');
   });
 
   it('tells variable from constant domains by corner radius, not by outline shape', () => {
@@ -531,7 +531,7 @@ describe('modifications on a domain with no glyph', () => {
     // The diagram, the sequence view and `highlight` all address domains by id,
     // so a hinge that only exists as a connector still has to carry one.
     const svg = renderSVG(conjugate()).svg;
-    const group = /<g id="[^"]*" class="av-domain av-domain-implicit"[^>]*>/.exec(svg);
+    const group = /<g id="[^"]*" class="dn-domain dn-domain-implicit"[^>]*>/.exec(svg);
     expect(group?.[0]).toContain('data-domain-id="HC:2"');
     expect(group?.[0]).toContain('data-chain-id="HC"');
     expect(group?.[0]).toContain('data-modifications="drug"');
@@ -539,7 +539,7 @@ describe('modifications on a domain with no glyph', () => {
 
   it('leaves an unmodified hinge as a bare connector', () => {
     const svg = renderSVG(getPreset('igg1')).svg;
-    expect(svg).not.toContain('av-domain-implicit');
+    expect(svg).not.toContain('dn-domain-implicit');
   });
 
   it('grows the viewBox to fit what hangs off the hinge', () => {

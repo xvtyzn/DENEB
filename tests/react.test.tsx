@@ -83,7 +83,7 @@ describe('components', () => {
 
   it('points at the presets entry when no source is given', () => {
     expect(() => renderToStaticMarkup(<AntibodyViewer />)).toThrow(
-      /antibody-viewer\/presets/,
+      /deneb\/presets/,
     );
   });
 
@@ -91,13 +91,13 @@ describe('components', () => {
     const markup = renderToStaticMarkup(
       <AntibodyViewer construct={getPreset('igg-kih')} showLegend={false} highlight={['mod:knob']} />,
     );
-    expect(markup).not.toContain('av-legend');
-    expect(markup).toContain('av-highlight');
+    expect(markup).not.toContain('dn-legend');
+    expect(markup).toContain('dn-highlight');
   });
 
   it('renders the linear and legend components', () => {
     expect(renderToStaticMarkup(<AntibodyLinear construct={getPreset('igg-kih')} />)).toContain(
-      'av-linear-domain',
+      'dn-linear-domain',
     );
     expect(renderToStaticMarkup(<AntibodyLegend construct={getPreset('igg-kih')} />)).toContain(
       'Targets',

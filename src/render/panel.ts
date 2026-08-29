@@ -88,7 +88,7 @@ export function renderPanel(items: PanelItem[], options: PanelOptions = {}): Pan
       fontWeight: 600,
       fill: theme.labelColor,
       anchor: 'middle',
-      className: 'av-panel-title',
+      className: 'dn-panel-title',
     });
   }
 
@@ -109,7 +109,7 @@ export function renderPanel(items: PanelItem[], options: PanelOptions = {}): Pan
 
     children.push({
       kind: 'group',
-      className: 'av-panel-cell',
+      className: 'dn-panel-cell',
       data: { 'panel-index': String(index) },
       transform: `translate(${round(offsetX)},${round(offsetY)}) scale(${round(fit)})`,
       children: scene.children,
@@ -128,7 +128,7 @@ export function renderPanel(items: PanelItem[], options: PanelOptions = {}): Pan
         fill: theme.labelColor,
         anchor: 'middle',
         baseline: 'central',
-        className: 'av-panel-label',
+        className: 'dn-panel-label',
       });
     }
   });
@@ -143,7 +143,7 @@ export function renderPanel(items: PanelItem[], options: PanelOptions = {}): Pan
     if (legend.height > 0) {
       children.push({
         kind: 'group',
-        className: 'av-legend',
+        className: 'dn-legend',
         transform: `translate(${theme.padding},${round(gridBottom + CELL_GAP)})`,
         children: legend.nodes,
       });

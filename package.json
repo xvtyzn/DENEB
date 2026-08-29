@@ -1,7 +1,7 @@
 {
-  "name": "antibody-viewer",
+  "name": "deneb",
   "version": "0.1.0",
-  "description": "Declarative SVG visualization of antibody formats — bispecific/multispecific architectures, domain colouring by specificity, and engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs).",
+  "description": "DENEB — Drawing Engine for Notated, Engineered Biologics. Declarative SVG diagrams of antibody formats: bispecific and multispecific architectures, domains coloured by specificity, engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs), ADC conjugation, and the AbML and VERITAS notations.",
   "type": "module",
   "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": [
@@ -11,7 +11,10 @@
     "svg",
     "visualization",
     "immunoglobulin",
-    "biologics"
+    "biologics",
+    "abml",
+    "veritas",
+    "adc"
   ],
   "sideEffects": false,
   "engines": {

@@ -57,13 +57,13 @@ describe('renderPanel', () => {
 
   it('draws one legend for the figure, not one per cell', () => {
     const { svg } = renderPanel([{ construct: first }, { construct: both }]);
-    expect((svg.match(/class="av-legend"/g) ?? []).length).toBe(1);
-    expect((svg.match(/class="av-legend-swatch"/g) ?? []).length).toBe(2);
+    expect((svg.match(/class="dn-legend"/g) ?? []).length).toBe(1);
+    expect((svg.match(/class="dn-legend-swatch"/g) ?? []).length).toBe(2);
   });
 
   it('can be told not to draw a legend at all', () => {
     const { svg } = renderPanel([{ construct: first }], { sharedLegend: false });
-    expect(svg).not.toContain('av-legend');
+    expect(svg).not.toContain('dn-legend');
   });
 
   it('keeps every cell at the same scale by default', () => {
@@ -71,7 +71,7 @@ describe('renderPanel', () => {
       { construct: getPreset('scfv') },
       { construct: getPreset('igg-kih') },
     ]);
-    const cells = walk(scene.children).filter((n) => n.className === 'av-panel-cell');
+    const cells = walk(scene.children).filter((n) => n.className === 'dn-panel-cell');
     expect(cells).toHaveLength(2);
     for (const cell of cells) expect(cell.transform).toContain('scale(1)');
   });
@@ -82,7 +82,7 @@ describe('renderPanel', () => {
       { uniformScale: false },
     );
     const scales = walk(scene.children)
-      .filter((n) => n.className === 'av-panel-cell')
+      .filter((n) => n.className === 'dn-panel-cell')
       .map((n) => Number(/scale\(([\d.]+)\)/.exec(n.transform ?? '')?.[1]));
     expect(Math.max(...scales)).toBeGreaterThan(Math.min(...scales));
   });
@@ -92,7 +92,7 @@ describe('renderPanel', () => {
       [1, 2, 3, 4, 5].map((n) => ({ construct: first, label: `variant ${n}` })),
       { columns: 2, title: 'Panel' },
     );
-    expect((svg.match(/class="av-panel-cell"/g) ?? []).length).toBe(5);
+    expect((svg.match(/class="dn-panel-cell"/g) ?? []).length).toBe(5);
     expect(svg).toContain('variant 5');
     expect(svg).toContain('>Panel<');
   });
@@ -117,6 +117,6 @@ describe('renderComparison', () => {
     expect(svg).toContain('parent');
     expect(svg).toContain('Fc-silenced');
     // Only the variant's CH2 domains are ringed.
-    expect((svg.match(/class="av-highlight"/g) ?? []).length).toBe(2);
+    expect((svg.match(/class="dn-highlight"/g) ?? []).length).toBe(2);
   });
 });

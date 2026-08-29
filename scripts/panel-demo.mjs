@@ -49,7 +49,7 @@ const findings = (construct) => {
 
 const html = `<!doctype html>
 <meta charset="utf-8">
-<title>antibody-viewer — panels, diffs and design checks</title>
+<title>deneb — panels, diffs and design checks</title>
 <style>
   :root { color-scheme: light; }
   body { margin: 0; padding: 24px; background: #f6f7f9; font: 14px/1.55 ui-sans-serif, system-ui, sans-serif; color: #1c222b; }
@@ -72,7 +72,7 @@ const html = `<!doctype html>
   A panel assigns colours once across the whole figure, so a target is the same colour in
   every cell — rendered one at a time, each construct numbers its targets from scratch and
   the second cell's CD3 comes out the colour of the first cell's HER2. The design checks
-  come from <code>antibody-viewer/lint</code>; every finding carries the domains it is about
+  come from <code>deneb/lint</code>; every finding carries the domains it is about
   in the form the diagram's <code>highlight</code> takes.
 </p>
 

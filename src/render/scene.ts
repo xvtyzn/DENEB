@@ -198,25 +198,25 @@ export function buildScene(
       fontWeight: 600,
       fill: theme.labelColor,
       anchor: 'middle',
-      className: 'av-title',
+      className: 'dn-title',
     });
   }
 
   const moleculeChildren: SceneNode[] = [
-    { kind: 'group', className: 'av-connectors', children: connectorNodes },
-    { kind: 'group', className: 'av-domains', children: domainNodes },
+    { kind: 'group', className: 'dn-connectors', children: connectorNodes },
+    { kind: 'group', className: 'dn-domains', children: domainNodes },
   ];
   if (options.showTermini) {
     moleculeChildren.push({
       kind: 'group',
-      className: 'av-termini',
+      className: 'dn-termini',
       children: terminusNodes(result, theme, centroid),
     });
   }
 
   children.push({
     kind: 'group',
-    className: 'av-molecule',
+    className: 'dn-molecule',
     transform: `translate(${round(-bbox.x + (width - bbox.width) / 2)},${round(-bbox.y + titleHeight)})`,
     children: moleculeChildren,
   });
@@ -224,7 +224,7 @@ export function buildScene(
   if (legend.height > 0) {
     children.push({
       kind: 'group',
-      className: 'av-legend',
+      className: 'dn-legend',
       transform: `translate(${round(theme.padding)},${round(titleHeight + bbox.height + 4)})`,
       children: legend.nodes,
     });
@@ -397,7 +397,7 @@ function domainNode(
       stroke: theme.highlight,
       strokeWidth: theme.highlightWidth + theme.outlineWidth * 2,
       strokeLinejoin: 'round',
-      className: 'av-highlight',
+      className: 'dn-highlight',
       pointerEvents: 'none',
     } as SceneNode);
   }
@@ -411,7 +411,7 @@ function domainNode(
     children.push({
       kind: 'group',
       transform: `rotate(${round(-p.rotation)})`,
-      className: 'av-domain-label',
+      className: 'dn-domain-label',
       pointerEvents: 'none',
       children: [
         {
@@ -447,7 +447,7 @@ function domainNode(
     node: {
     kind: 'group',
     id: `${ctx.prefix}${p.domain.id.replace(/[^\w:-]/g, '_')}`,
-    className: 'av-domain',
+    className: 'dn-domain',
     transform: `translate(${round(p.center.x)},${round(p.center.y)}) rotate(${round(p.rotation)})`,
     data,
     role: 'img',
@@ -529,7 +529,7 @@ function skippedDomainNode(
     node: {
       kind: 'group',
       id: `${ctx.prefix}${domain.id.replace(/[^\w:-]/g, '_')}`,
-      className: 'av-domain av-domain-implicit',
+      className: 'dn-domain dn-domain-implicit',
       transform: `translate(${round(mid.x)},${round(mid.y)}) rotate(${round(rotation)})`,
       data,
       role: 'img',
@@ -546,7 +546,7 @@ function connectorNode(c: Connector, theme: Theme): SceneNode {
     d: curve(c.a, c.b, c.via),
     fill: 'none',
     strokeLinecap: 'round' as const,
-    className: `av-connector av-connector-${c.kind}`,
+    className: `dn-connector dn-connector-${c.kind}`,
     pointerEvents: 'none' as const,
     data: {
       'connector-kind': c.kind,
@@ -608,7 +608,7 @@ function terminusLabel(
     fontWeight: 600,
     anchor: 'middle',
     baseline: 'central',
-    className: 'av-terminus',
+    className: 'dn-terminus',
     data: { terminus: text, 'chain-id': chainId },
     pointerEvents: 'none',
   };

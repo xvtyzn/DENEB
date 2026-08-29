@@ -37,7 +37,7 @@ for (const name of presetNames()) {
 
 const html = `<!doctype html>
 <meta charset="utf-8">
-<title>antibody-viewer gallery</title>
+<title>deneb gallery</title>
 <style>
   :root { color-scheme: light; }
   body { margin: 0; padding: 24px; background: #f6f7f9; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; color: #1c222b; }
@@ -53,7 +53,7 @@ const html = `<!doctype html>
   .diag.warning { color: #a16207; }
   .diag.error { color: #b91c1c; }
 </style>
-<h1>antibody-viewer — preset gallery</h1>
+<h1>deneb — preset gallery</h1>
 <p class="sub">${presetNames().length} formats · ${warnings} non-info diagnostics</p>
 <div class="grid">${cards.join('')}</div>
 `;

@@ -14,17 +14,17 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dir = mkdtempSync(join(tmpdir(), 'antibody-viewer-consumer-'));
+const dir = mkdtempSync(join(tmpdir(), 'deneb-consumer-'));
 
 const TS = `
-import { renderSVG, parseDSL, normalize, type Construct } from 'antibody-viewer';
-import { getPreset, presetNames } from 'antibody-viewer/presets';
-import { lint } from 'antibody-viewer/lint';
-import { diff } from 'antibody-viewer/diff';
-import { renderPanel, renderComparison } from 'antibody-viewer/panel';
-import { fromANARCI, fromIgBLAST } from 'antibody-viewer/import';
-import { parseAbML, toAbML } from 'antibody-viewer/abml';
-import { parseVeritas, toVeritas } from 'antibody-viewer/veritas';
+import { renderSVG, parseDSL, normalize, type Construct } from 'deneb';
+import { getPreset, presetNames } from 'deneb/presets';
+import { lint } from 'deneb/lint';
+import { diff } from 'deneb/diff';
+import { renderPanel, renderComparison } from 'deneb/panel';
+import { fromANARCI, fromIgBLAST } from 'deneb/import';
+import { parseAbML, toAbML } from 'deneb/abml';
+import { parseVeritas, toVeritas } from 'deneb/veritas';
 
 const construct: Construct = getPreset(presetNames()[0]!);
 renderSVG(construct);
@@ -40,7 +40,7 @@ parseVeritas(toVeritas(construct).name);
 `;
 
 const TSX = `
-import { AntibodyViewer, AntibodyLinear, AntibodyLegend, AntibodySequence, SceneSvg } from 'antibody-viewer/react';
+import { AntibodyViewer, AntibodyLinear, AntibodyLegend, AntibodySequence, SceneSvg } from 'deneb/react';
 export const App = () => (
   <>
     <AntibodyViewer dsl="HC: VH-CH1" />
@@ -69,7 +69,7 @@ try {
   );
   writeFileSync(join(dir, 'src/main.ts'), TS);
   writeFileSync(join(dir, 'src/app.tsx'), TSX);
-  symlinkSync(root, join(dir, 'node_modules/antibody-viewer'), 'dir');
+  symlinkSync(root, join(dir, 'node_modules/deneb'), 'dir');
   for (const dep of ['react', 'react-dom', '@types']) {
     symlinkSync(join(root, 'node_modules', dep), join(dir, 'node_modules', dep), 'dir');
   }

@@ -56,7 +56,7 @@ export function buildLegend(
       fontWeight: 600,
       fill: theme.labelColor,
       opacity: 0.65,
-      className: 'av-legend-heading',
+      className: 'dn-legend-heading',
     });
     y += ROW_HEIGHT;
   };
@@ -81,7 +81,7 @@ export function buildLegend(
         fontFamily: theme.fontFamily,
         fill: theme.labelColor,
         baseline: 'central',
-        className: 'av-legend-label',
+        className: 'dn-legend-label',
       });
       x += w;
       used = Math.max(used, x - GAP);
@@ -103,7 +103,7 @@ export function buildLegend(
             stroke: theme.outline,
             strokeWidth: theme.outlineWidth,
             data: { specificity: s.name },
-            className: 'av-legend-swatch',
+            className: 'dn-legend-swatch',
           },
         ],
       })),
@@ -126,7 +126,7 @@ export function buildLegend(
           'modification-type': m.type,
           ...(m.payload?.name ? { payload: m.payload.name } : {}),
         },
-        className: 'av-legend-marker',
+        className: 'dn-legend-marker',
         ...(m.detail ? { title: m.detail } : {}),
       },
     ],
@@ -198,7 +198,7 @@ function drawStructures(
       stroke: theme.constantStroke,
       strokeWidth: 0.8,
       opacity: 0.5,
-      className: 'av-structure-frame',
+      className: 'dn-structure-frame',
     });
     const drawing = structureNode(item, frameX, y, width, height);
     if (drawing) nodes.push(drawing);
@@ -212,7 +212,7 @@ function drawStructures(
       fill: theme.labelColor,
       anchor: 'middle',
       baseline: 'central',
-      className: 'av-structure-caption',
+      className: 'dn-structure-caption',
     });
     x += slot + STRUCTURE_GAP;
     used = Math.max(used, x - STRUCTURE_GAP);
@@ -269,7 +269,7 @@ export function buildLegendScene(
     children: [
       {
         kind: 'group',
-        className: 'av-legend',
+        className: 'dn-legend',
         transform: `translate(${theme.padding},4)`,
         children: legend.nodes,
       },

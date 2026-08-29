@@ -91,7 +91,7 @@ export function renderLinear(
       fill: theme.labelColor,
       anchor: 'end',
       baseline: 'central',
-      className: 'av-linear-chain-label',
+      className: 'dn-linear-chain-label',
     });
 
     const x0 = theme.padding + LABEL_COLUMN;
@@ -106,7 +106,7 @@ export function renderLinear(
       stroke: theme.backbone,
       strokeWidth: 1,
       opacity: 0.5,
-      className: 'av-linear-backbone',
+      className: 'dn-linear-backbone',
     });
 
     for (const seg of segments) {
@@ -135,7 +135,7 @@ export function renderLinear(
       };
       const group: SceneNode = {
         kind: 'group',
-        className: 'av-linear-domain',
+        className: 'dn-linear-domain',
         data,
         title: describeLinear(d),
         children: [
@@ -147,7 +147,7 @@ export function renderLinear(
                   stroke: theme.highlight,
                   strokeWidth: theme.highlightWidth + 1,
                   pointerEvents: 'none' as const,
-                  className: 'av-highlight',
+                  className: 'dn-highlight',
                 } as SceneNode,
               ]
             : []),
@@ -197,7 +197,7 @@ export function renderLinear(
           strokeWidth: 1.6,
           strokeLinecap: 'round',
           ...(r.payload?.cleavable === false ? { strokeDasharray: '1.8 1.4' } : {}),
-          className: 'av-linear-modification',
+          className: 'dn-linear-modification',
           data,
         });
         // A conjugate gets its compound glyph on the stalk, matching the cartoon.
@@ -209,7 +209,7 @@ export function renderLinear(
             fill: r.color,
             stroke: theme.outline,
             strokeWidth: 0.8,
-            className: 'av-linear-payload',
+            className: 'dn-linear-payload',
             data,
           });
         }
@@ -228,7 +228,7 @@ export function renderLinear(
         fill: theme.labelColor,
         opacity: 0.6,
         anchor: 'end',
-        className: 'av-linear-ruler',
+        className: 'dn-linear-ruler',
       });
     }
 
@@ -246,7 +246,7 @@ export function renderLinear(
   if (legend.height > 0) {
     children.push({
       kind: 'group',
-      className: 'av-legend',
+      className: 'dn-legend',
       transform: `translate(${theme.padding},${y - rowGap + 10})`,
       children: legend.nodes,
     });
@@ -270,7 +270,7 @@ export function renderLinear(
       fontWeight: 600,
       fill: theme.labelColor,
       anchor: 'middle',
-      className: 'av-title',
+      className: 'dn-title',
     });
   }
 

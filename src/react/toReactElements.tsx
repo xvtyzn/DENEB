@@ -98,7 +98,7 @@ export function SceneSvg({ scene, className, style, svgRef, ...rest }: SceneSvgP
       width: scene.width,
       height: scene.height,
       role: 'img',
-      className: ['antibody-viewer', className].filter(Boolean).join(' '),
+      className: ['deneb', className].filter(Boolean).join(' '),
       style,
       ref: svgRef,
       ...rest,

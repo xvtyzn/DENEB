@@ -96,7 +96,7 @@ export function structureNode(
     width,
     height,
     preserveAspectRatio: 'xMidYMid meet',
-    className: 'av-structure',
+    className: 'dn-structure',
     data: { 'modification-type': r.type, ...(r.payload?.name ? { payload: r.payload.name } : {}) },
     // An aria-label rather than a nested <title>: raw markup fills the element's
     // children, leaving no room for one.
@@ -110,7 +110,7 @@ export function structureNode(
     kind: 'group',
     transform: `translate(${round(2 * x + width)},0) scale(-1,1)`,
     children: [node],
-    className: 'av-structure-mirror',
+    className: 'dn-structure-mirror',
   };
 }
 
@@ -268,7 +268,7 @@ function markerNodes(
 ): SceneNode[] {
   const data: Record<string, string> = { 'modification-type': r.type };
   if (r.payload?.name) data['payload'] = r.payload.name;
-  const common = { className: 'av-marker', data, pointerEvents: 'none' as const };
+  const common = { className: 'dn-marker', data, pointerEvents: 'none' as const };
 
   switch (r.marker) {
     case 'dot':
@@ -488,11 +488,11 @@ function payloadNodes(
           fill: r.color,
           anchor: 'middle',
           baseline: 'central',
-          className: 'av-attachment-label',
+          className: 'dn-attachment-label',
           pointerEvents: 'none',
         },
       ],
-      className: 'av-attachment',
+      className: 'dn-attachment',
       data: common.data,
       pointerEvents: 'none',
     });
@@ -540,7 +540,7 @@ function payloadNodes(
           fill: r.color,
           anchor: far > 0 ? 'start' : 'end',
           baseline: 'central',
-          className: 'av-payload-dar',
+          className: 'dn-payload-dar',
           pointerEvents: 'none',
         },
       );
@@ -557,7 +557,7 @@ function payloadNodes(
         fontWeight: 600,
         anchor: 'middle',
         baseline: 'central',
-        className: 'av-payload-label',
+        className: 'dn-payload-label',
         pointerEvents: 'none',
       });
     }
@@ -566,7 +566,7 @@ function payloadNodes(
       transform: `translate(${round(tipLocalX)},${round(y)}) rotate(${round(-ctx.rotation)})`,
       children: panel,
       data: common.data,
-      className: 'av-payload-structure',
+      className: 'dn-payload-structure',
       pointerEvents: 'none',
     });
     return nodes;
@@ -602,12 +602,12 @@ function payloadNodes(
           fontWeight: 600,
           anchor,
           baseline: 'central',
-          className: 'av-payload-label',
+          className: 'dn-payload-label',
           pointerEvents: 'none',
         },
       ],
       data: common.data,
-      className: 'av-payload-name',
+      className: 'dn-payload-name',
       pointerEvents: 'none',
     });
   }
@@ -749,7 +749,7 @@ function bracket(x: number, top: number, bottom: number, facing: 1 | -1, color: 
     fill: 'none',
     stroke: color,
     strokeWidth: 0.9,
-    className: 'av-payload-bracket',
+    className: 'dn-payload-bracket',
     pointerEvents: 'none',
   };
 }
