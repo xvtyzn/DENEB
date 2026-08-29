@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { buildScene, renderLinear, renderSVG, toSVGString } from '../src/index';
+import { buildScene, renderLinear, toSVGString } from '../src/index';
 import { AntibodyLegend, AntibodyLinear, AntibodyViewer, SceneSvg } from '../src/react/index';
 import { domainFromEvent, modificationFromEvent } from '../src/react/events';
 import { normalize } from '../src/index';
@@ -104,12 +104,12 @@ describe('components', () => {
     );
   });
 
-  it('reports the rendered SVG through onRender', () => {
+  it('does not run onRender as a side effect of server rendering', () => {
     let captured = '';
     renderToStaticMarkup(
       <AntibodyViewer construct={getPreset('scfv')} onRender={(svg) => (captured = svg)} />,
     );
-    expect(captured).toBe(renderSVG(getPreset('scfv')).svg);
+    expect(captured).toBe('');
   });
 });
 

@@ -13,7 +13,10 @@
   header p { margin: 4px 0 0; color: #6b7280; font-size: 12px; }
   main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; padding: 16px 20px; align-items: start; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-  .panel { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 12px; }
+  .panel { background: #fff; border: 1px solid #e3e6ea; border-radius: 8px; padding: 12px; }
+  h2 { margin: 0 0 8px; font-size: 13px; }
+  .check-heading { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e3e6ea; }
+  .view-heading { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e3e6ea; }
   label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
   label:first-child { margin-top: 0; }
   label.inline { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-weight: 400; }
@@ -21,42 +24,50 @@
   select, button { font: inherit; padding: 5px 9px; border: 1px solid #d6dae0; border-radius: 6px; background: #fff; }
   button { cursor: pointer; }
   button:hover { background: #f1f3f5; }
+  button:disabled { cursor: not-allowed; opacity: .5; }
+  :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  #stage { position: relative; display: flex; justify-content: center; padding: 8px; overflow-x: auto; }
-  #linear { margin-top: 12px; border-top: 1px dashed #e3e6ea; padding-top: 12px; overflow-x: auto; }
-  #tip { position: absolute; pointer-events: none; background: rgba(20,24,31,.94); color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 11px; white-space: nowrap; transform: translate(-50%, calc(-100% - 8px)); opacity: 0; transition: opacity .08s; }
+  #preview { position: relative; }
+  #stage { display: flex; justify-content: center; min-height: 180px; padding: 8px; overflow-x: auto; }
+  #linear { overflow-x: auto; }
+  #tip { position: absolute; z-index: 2; pointer-events: none; max-width: min(280px, calc(100% - 16px)); background: rgba(20,24,31,.94); color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 11px; overflow-wrap: anywhere; transform: translate(-50%, calc(-100% - 8px)); opacity: 0; transition: opacity .08s; }
   #errors { color: #b91c1c; font-size: 12px; white-space: pre-wrap; }
   #diagnostics { color: #a16207; font-size: 12px; margin-top: 8px; }
   #lint { list-style: none; margin: 0; padding: 0; font-size: 12px; }
-  #lint li { padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; border: 1px solid transparent; }
-  #lint li:hover, #lint li.on { background: #fdf6e3; border-color: #e6d9a8; }
+  #lint li { margin-bottom: 4px; }
+  #lint .finding { width: 100%; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; text-align: left; }
+  #lint .finding:hover, #lint .finding.on { background: #fdf6e3; border-color: #e6d9a8; }
   #lint li.info { color: #4b5563; }
   #lint li.warning { color: #92400e; }
   #lint li.error { color: #b91c1c; }
   #lint .hint { display: block; opacity: .75; margin-top: 2px; }
-  #lint .clean { color: #15803d; padding-left: 8px; }
-  .av-domain:hover { filter: brightness(1.06); cursor: pointer; }
+  #lint .heuristic { display: inline-block; margin-left: 6px; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; font-weight: 400; opacity: .75; }
+  #lint .clean, #lint .unavailable { padding-left: 8px; }
+  #lint .clean { color: #15803d; }
+  #lint .unavailable { color: #6b7280; }
+  .dn-domain:hover, .dn-domain:focus,
+  .dn-linear-domain:hover, .dn-linear-domain:focus { filter: brightness(1.06); cursor: pointer; }
 </style>
 </head>
 <body>
 <header>
   <h1>deneb playground</h1>
-  <p>Edit the notation on the left — the compact DSL or AbML v1.06. Hover a domain
-  for its annotation, click to pin a highlight.</p>
+  <p>Antibody construct editor for the compact DSL and AbML v1.06.</p>
 </header>
 <main>
   <div class="panel">
     <label for="preset">Preset</label>
     <div class="row"><select id="preset"></select></div>
-    <label for="dsl">Notation</label>
+    <label for="notation">Notation</label>
     <div class="row">
       <select id="notation">
         <option value="dsl">DSL</option>
         <option value="abml">AbML</option>
       </select>
     </div>
-    <textarea id="dsl" spellcheck="false"></textarea>
-    <div id="errors"></div>
+    <label for="dsl">Definition</label>
+    <textarea id="dsl" spellcheck="false" aria-describedby="errors"></textarea>
+    <div id="errors" role="alert"></div>
     <label for="mode">Colour by</label>
     <div class="row">
       <select id="mode">
@@ -68,16 +79,19 @@
       <label class="inline"><input type="checkbox" id="termini"> N/C</label>
     </div>
     <div class="row">
-      <button id="svg">Download SVG</button>
-      <button id="png">Download PNG</button>
+      <button type="button" id="svg">Download SVG</button>
+      <button type="button" id="png">Download PNG</button>
     </div>
-    <div id="diagnostics"></div>
-    <label>Design check</label>
+    <div id="diagnostics" role="status"></div>
+    <h2 class="check-heading">Design check</h2>
     <ul id="lint"></ul>
   </div>
-  <div class="panel">
-    <div id="stage"><div id="tip"></div></div>
+  <div class="panel" id="preview">
+    <h2>Cartoon</h2>
+    <div id="stage"></div>
+    <h2 class="view-heading">Linear</h2>
     <div id="linear"></div>
+    <div id="tip" role="status"></div>
   </div>
 </main>
 
@@ -86,7 +100,7 @@ import {
   renderSVG, renderLinear, parseDSL, stringifyDSL, downloadSVG, downloadPNG,
 } from '../dist/index.js';
 import { presetNames, getPreset } from '../dist/presets.js';
-import { lint } from '../dist/lint.js';
+import { LINT_RULES, lint } from '../dist/lint.js';
 import { parseAbML, toAbML } from '../dist/abml.js';
 
 // Reading and writing are picked together so switching notation rewrites what
@@ -99,6 +113,7 @@ const notation = () => NOTATIONS[$('notation').value];
 
 const $ = (id) => document.getElementById(id);
 const selected = new Set();
+const heuristicRules = new Set(LINT_RULES.filter((rule) => rule.heuristic).map((rule) => rule.name));
 let current = null;
 let previous = 'dsl';
 
@@ -108,7 +123,6 @@ for (const name of presetNames()) {
   $('preset').append(option);
 }
 $('preset').value = 'igg-kih';
-loadPreset();
 
 $('preset').addEventListener('change', loadPreset);
 $('notation').addEventListener('change', switchNotation);
@@ -118,6 +132,8 @@ $('labels').addEventListener('change', draw);
 $('termini').addEventListener('change', draw);
 $('svg').addEventListener('click', () => current && downloadSVG(current.svg, 'antibody.svg'));
 $('png').addEventListener('click', () => current && downloadPNG(current.svg, 'antibody.png'));
+wire();
+loadPreset();
 
 function loadPreset() {
   $('dsl').value = notation().write(getPreset($('preset').value));
@@ -128,8 +144,12 @@ function loadPreset() {
 /** Carry whatever is in the box across to the other notation. */
 function switchNotation() {
   const construct = read($('dsl').value, previous);
-  if (construct) $('dsl').value = notation().write(construct);
-  else loadPreset();
+  if (!construct) {
+    previous = $('notation').value;
+    loadPreset();
+    return;
+  }
+  $('dsl').value = notation().write(construct);
   previous = $('notation').value;
   draw();
 }
@@ -148,7 +168,18 @@ function draw() {
     construct = notation().read($('dsl').value);
     $('errors').textContent = '';
   } catch (error) {
+    current = null;
     $('errors').textContent = String(error.message ?? error);
+    $('diagnostics').textContent = '';
+    $('stage').replaceChildren();
+    $('linear').replaceChildren();
+    $('svg').disabled = true;
+    $('png').disabled = true;
+    $('lint').replaceChildren(Object.assign(document.createElement('li'), {
+      className: 'unavailable',
+      textContent: 'Fix the notation to run design checks.',
+    }));
+    hideTip();
     return;
   }
   const options = {
@@ -159,7 +190,7 @@ function draw() {
     scale: 1.7,
   };
   current = renderSVG(construct, options);
-  $('stage').innerHTML = '<div id="tip"></div>' + current.svg;
+  $('stage').innerHTML = current.svg;
   $('linear').innerHTML = renderLinear(construct, {
     colorMode: options.colorMode,
     highlight: options.highlight,
@@ -167,11 +198,13 @@ function draw() {
     showTitle: false,
     showLegend: false,
   }).svg;
+  $('svg').disabled = false;
+  $('png').disabled = false;
+  makeDomainsInteractive();
 
   const warnings = current.layout.diagnostics.filter((d) => d.level !== 'info');
   $('diagnostics').textContent = warnings.map((d) => `${d.level}: ${d.message}`).join('\n');
   showLint(construct);
-  wire();
 }
 
 // Design findings, and clicking one lights up what it is talking about.
@@ -187,17 +220,34 @@ function showLint(construct) {
     const item = document.createElement('li');
     item.className = finding.level;
     const pinned = finding.refs.every((r) => selected.has(r));
-    if (pinned) item.classList.add('on');
-    item.innerHTML =
-      `<b>${finding.rule}</b> — ${finding.message}` +
-      (finding.hint ? `<span class="hint">${finding.hint}</span>` : '');
-    item.addEventListener('click', () => {
+    const control = document.createElement('button');
+    control.type = 'button';
+    control.className = `finding${pinned ? ' on' : ''}`;
+    control.setAttribute('aria-pressed', String(pinned));
+    const name = document.createElement('b');
+    name.textContent = finding.rule;
+    control.append(name);
+    if (heuristicRules.has(finding.rule)) {
+      const badge = document.createElement('span');
+      badge.className = 'heuristic';
+      badge.textContent = 'heuristic';
+      control.append(badge);
+    }
+    control.append(document.createTextNode(` — ${finding.message}`));
+    if (finding.hint) {
+      const hint = document.createElement('span');
+      hint.className = 'hint';
+      hint.textContent = finding.hint;
+      control.append(hint);
+    }
+    control.addEventListener('click', () => {
       for (const ref of finding.refs) {
         if (pinned) selected.delete(ref);
         else selected.add(ref);
       }
       draw();
     });
+    item.append(control);
     list.append(item);
   }
 }
@@ -206,21 +256,66 @@ function wire() {
   const tip = $('tip');
   for (const root of [$('stage'), $('linear')]) {
     root.addEventListener('mousemove', (event) => {
-      const group = event.target.closest('[data-domain-id]');
-      if (!group) { tip.style.opacity = 0; return; }
-      const box = $('stage').getBoundingClientRect();
-      tip.textContent = group.querySelector('title')?.textContent ?? '';
-      tip.style.left = `${event.clientX - box.left}px`;
-      tip.style.top = `${event.clientY - box.top}px`;
-      tip.style.opacity = 1;
+      const group = closestDomain(event.target);
+      if (!group) { hideTip(); return; }
+      showTip(group, event.clientX, event.clientY);
     });
-    root.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+    root.addEventListener('mouseleave', hideTip);
     root.addEventListener('click', (event) => {
-      const id = event.target.closest('[data-domain-id]')?.dataset.domainId;
-      if (!id) return;
-      selected.has(id) ? selected.delete(id) : selected.add(id);
-      draw();
+      toggleDomain(closestDomain(event.target));
     });
+    root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const group = closestDomain(event.target);
+      if (!group) return;
+      event.preventDefault();
+      toggleDomain(group);
+    });
+    root.addEventListener('focusin', (event) => {
+      const group = closestDomain(event.target);
+      if (!group) return;
+      const box = group.getBoundingClientRect();
+      showTip(group, box.left + box.width / 2, box.top);
+    });
+    root.addEventListener('focusout', hideTip);
+  }
+
+  function showTip(group, clientX, clientY) {
+    const box = $('preview').getBoundingClientRect();
+    const x = Math.max(8, Math.min(clientX - box.left, box.width - 8));
+    tip.textContent = group.querySelector('title')?.textContent ?? '';
+    tip.style.left = `${x}px`;
+    tip.style.top = `${clientY - box.top}px`;
+    tip.style.opacity = 1;
+  }
+}
+
+function closestDomain(target) {
+  if (!(target instanceof Element)) return null;
+  const group = target.closest('.dn-domain, .dn-linear-domain');
+  if (group) return group;
+  const id = target.closest('[data-domain-id]')?.getAttribute('data-domain-id');
+  const root = target.closest('#stage, #linear');
+  if (!id || !root) return null;
+  return [...root.querySelectorAll('.dn-domain, .dn-linear-domain')]
+    .find((candidate) => candidate.getAttribute('data-domain-id') === id) ?? null;
+}
+
+function toggleDomain(group) {
+  const id = group?.dataset.domainId;
+  if (!id) return;
+  selected.has(id) ? selected.delete(id) : selected.add(id);
+  draw();
+}
+
+function hideTip() {
+  $('tip').style.opacity = 0;
+}
+
+function makeDomainsInteractive() {
+  for (const group of document.querySelectorAll('#stage .dn-domain, #linear .dn-linear-domain')) {
+    group.setAttribute('tabindex', '0');
+    group.setAttribute('role', 'button');
   }
 }
 </script>

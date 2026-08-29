@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { buildScene, type SceneOptions } from '../render/scene';
 import { toSVGString } from '../render/svg';
 import type { LayoutResult } from '../layout/types';
@@ -68,10 +76,11 @@ export function AntibodyViewer(props: AntibodyViewerProps): ReactNode {
     () => buildScene(source, sceneOptions),
     [source, JSON.stringify(sceneOptions)],
   );
+  const renderedSvg = useMemo(() => toSVGString(scene), [scene]);
 
-  useMemo(() => {
-    if (onRender) onRender(toSVGString(scene), layout);
-  }, [scene, layout, onRender]);
+  useEffect(() => {
+    if (onRender) onRender(renderedSvg, layout);
+  }, [renderedSvg, layout, onRender]);
 
   const handleMove = useCallback(
     (event: React.MouseEvent) => {

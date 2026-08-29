@@ -95,7 +95,7 @@ describe('lint catches what it should', () => {
     expect(lint(igg4).map((f) => f.rule)).not.toContain('igg4-fab-arm-exchange');
   });
 
-  it('flags a DAR the chemistry cannot reach', () => {
+  it('flags a DAR outside the built-in screening range without making a chemistry claim', () => {
     const withDar = (dar: number) => ({
       chains: [
         {
@@ -109,7 +109,8 @@ describe('lint catches what it should', () => {
         },
       ],
     });
-    expect(lint(withDar(12)).map((f) => f.rule)).toContain('dar-out-of-range');
+    const high = lint(withDar(12)).find((f) => f.rule === 'dar-out-of-range');
+    expect(high?.message).toContain('built-in 0-8 screening range');
     expect(lint(withDar(0)).map((f) => f.rule)).toContain('dar-out-of-range');
     expect(lint(withDar(3.5)).map((f) => f.rule)).not.toContain('dar-out-of-range');
   });
@@ -145,9 +146,9 @@ describe('lint findings are usable', () => {
     expect(raised.find((f) => f.rule === 'scfv-unstabilised')?.level).toBe('error');
   });
 
-  it('marks the rules that read more than the structure', () => {
+  it('marks rules that rely on heuristic assumptions', () => {
     const heuristics = LINT_RULES.filter((r) => r.heuristic).map((r) => r.name);
-    expect(heuristics).toEqual(['effector-active-engager']);
+    expect(heuristics).toEqual(['effector-active-engager', 'dar-out-of-range']);
     for (const rule of LINT_RULES) expect(rule.about, rule.name).toBeTruthy();
   });
 

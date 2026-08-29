@@ -225,16 +225,21 @@ const scfvUnstabilised: LintRule = {
 const darOutOfRange: LintRule = {
   name: 'dar-out-of-range',
   level: 'warning',
-  about: 'A drug-to-antibody ratio outside what the chemistry can give.',
+  heuristic: true,
+  about: 'A non-positive drug-to-antibody ratio or one above the built-in screening range.',
   check(c) {
     const hits: RuleHit[] = [];
     for (const domain of allDomains(c)) {
       for (const m of domain.modifications) {
         const dar = m.payload?.dar;
         if (dar == null || (dar > 0 && dar <= 8)) continue;
+        const message =
+          dar <= 0
+            ? `DAR ${dar} on ${domain.id} must be greater than zero.`
+            : `DAR ${dar} on ${domain.id} is above the built-in 0-8 screening range.`;
         hits.push({
-          message: `DAR ${dar} on ${domain.id} is outside the 0–8 range interchain-cysteine and lysine chemistries reach.`,
-          hint: 'Check the value, or say which site chemistry supports it.',
+          message,
+          hint: 'Confirm the value against the conjugation chemistry, or disable this heuristic for a supported design.',
           refs: [domain.id],
         });
       }

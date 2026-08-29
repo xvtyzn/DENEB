@@ -2,6 +2,15 @@
   "name": "deneb",
   "version": "0.1.0",
   "description": "DENEB — Drawing Engine for Notated, Engineered Biologics. Declarative SVG diagrams of antibody formats: bispecific and multispecific architectures, domains coloured by specificity, engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs), ADC conjugation, and the AbML and VERITAS notations.",
+  "author": "Keigo Ide <keigo.ide@aoni.waseda.jp>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xvtyzn/DENEB.git"
+  },
+  "homepage": "https://github.com/xvtyzn/DENEB#readme",
+  "bugs": {
+    "url": "https://github.com/xvtyzn/DENEB/issues"
+  },
   "type": "module",
   "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": [
@@ -22,6 +31,9 @@
   },
   "files": [
     "dist",
+    "docs/reference.md",
+    "docs/reference.ja.md",
+    "docs/images/*.png",
     "README.md",
     "README.ja.md",
     "LICENSE"
