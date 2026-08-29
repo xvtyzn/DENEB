@@ -12,5 +12,5 @@ examples/panel.html
 .vscode/
 .idea/
 
-# Personal Claude Code settings; .claude/settings.json is shared.
-.claude/settings.local.json
+# Local AI assistant settings must not be committed.
+.claude/
