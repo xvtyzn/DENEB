@@ -14,6 +14,7 @@ export default defineConfig({
         panel: 'src/render/panel.ts',
         import: 'src/import/index.ts',
         abml: 'src/abml/index.ts',
+        veritas: 'src/veritas/index.ts',
       },
       formats: ['es', 'cjs'],
       fileName: (format, name) => (format === 'es' ? `${name}.js` : `${name}.cjs`),
@@ -53,6 +54,7 @@ export default defineConfig({
           if (id.includes('/src/diff/')) return 'diff-engine';
           if (id.includes('/src/import/')) return 'import-adapters';
           if (id.includes('/src/abml/')) return 'abml';
+          if (id.includes('/src/veritas/')) return 'veritas';
           return undefined;
         },
       },

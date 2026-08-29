@@ -55,7 +55,15 @@ function resolveModule(base: string): string | null {
 }
 
 /** Directories the viewer entry must never pull in. */
-const OPTIONAL_AREAS = ['src/presets/', 'src/lint/', 'src/diff/', 'src/import/', 'src/react/'];
+const OPTIONAL_AREAS = [
+  'src/presets/',
+  'src/lint/',
+  'src/diff/',
+  'src/import/',
+  'src/react/',
+  'src/abml/',
+  'src/veritas/',
+];
 
 describe('entry point boundaries', () => {
   const core = reachableFrom('src/index.ts');

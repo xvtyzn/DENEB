@@ -282,7 +282,7 @@ payload: {
 
 描画から先はすべて**独立したサブパス**に置いてあるので、図を描くだけのページが
 それらを読み込むことはありません。コアは gzip 26 kB で、プリセット・lint・diff・
-importer・AbML のいずれにも到達しません（ソースは `tests/boundaries.test.ts`、ビルド成果物は
+importer・2 つの記法のいずれにも到達しません（ソースは `tests/boundaries.test.ts`、ビルド成果物は
 `npm run size` で検証しています）。
 
 | import | gzip | 内容 |
@@ -295,6 +295,7 @@ importer・AbML のいずれにも到達しません（ソースは `tests/bound
 | `antibody-viewer/panel` | 29 kB | 複数分子の図版 |
 | `antibody-viewer/import` | 3 kB | ANARCI / IgBLAST アダプタ |
 | `antibody-viewer/abml` | 13 kB | AbML 記法の読み書き |
+| `antibody-viewer/veritas` | 13 kB | VERITAS フォーマット名の読み書き |
 
 ### 設計チェック（lint）
 
@@ -398,6 +399,45 @@ const back = toAbML(construct);
 元の文字列が使っていた特異性レターは振り直さずそのまま保ち、`ANTI` の名前も
 双方向で保存されるので、読み込んで書き戻した文字列は通常そのまま一致します。
 
+### VERITAS の命名と読み取り
+
+```ts
+import { toVeritas, parseVeritas } from 'antibody-viewer/veritas';
+
+const { name, notes } = toVeritas(construct);
+// "[(CD3)Fab*(HER2)Fab]-heteroFc(KiH)"
+
+const { construct: drawn } = parseVeritas('scFv-Fc-scFv');
+```
+
+[VERITAS](https://doi.org/10.1080/19420862.2023.2207232)（Verified Taxonomy for
+Antibodies、Amgen）は、フォーマットを**多量体化中心**を軸に命名する体系です。
+`[N 末側の付加]–中心–[C 末側の付加]` という形を取り、鎖の区切りが `*`、非共有結合の
+対合が `:`、標的はモジュールの前に `(Target)`、ヘテロ二量体化戦略は中心の後ろに
+`(KiH)` のように書きます。
+
+実用上ほしいのは `toVeritas` のほうでしょう。construct を渡すと**そのフォーマットの
+名前**が返ります。同梱プリセット 49 種すべてに名前が付き、その名前はすべて読み戻して
+描画でき、読み戻したものを再命名しても同じ名前になります。
+
+論文が名前を展開する場面では、こちらも展開します。軽鎖に付加のあるアームは `Fab` の
+中に隠せないので、`…LC:Fd` と `Fc` 中心の形になります（そうしないと実体と違う「IgG」を
+名乗ることになります）。2 本のアームが別々の標的に結合する場合は
+`[(A)Fab*(B)Fab]–heteroFc` になります。中心を持たない分子（BiTE、ダイアボディなど）は
+モジュール構成で命名し、中心がないことを明示します。
+
+**VERITAS は名前であって構造ではありません。** リンカー長・ヒンジ・アイソタイプ・
+コンジュゲーション・残基レベルの改変には記法がありません。そのため名前を読むときは
+このライブラリの既定値で埋め、construct を命名するときは**名前に載らなかったもの**を
+報告します。
+
+```ts
+toVeritas(getPreset('adc-igg')).notes;
+// ['VERITAS names architecture, not residue-level engineering: drug is not in the name.', …]
+```
+
+アーキテクチャ以上のことを表現したいときは DSL を使ってください。
+
 ### 図と同じ色の配列ビューア
 
 ```tsx
@@ -442,8 +482,11 @@ OpenChemLib（このリポジトリの devDependency であり、ライブラリ
 
 [AbML / abYdraw](https://www.tandfonline.com/doi/full/10.1080/19420862.2022.2101183)
 は抗体フォーマットの記法とレンダラの公開された実装です。AbML は
-`antibody-viewer/abml` で読み書きできます。[BioGlyph](https://bioglyph.app/)
-は同じ領域の商用ツールです。
+`antibody-viewer/abml` で読み書きできます。
+[VERITAS](https://doi.org/10.1080/19420862.2023.2207232) は Amgen による同じ領域の
+命名体系で、`antibody-viewer/veritas` で扱えます。両者は答える問いが違います —
+AbML は**分子を書き**、VERITAS は**アーキテクチャに名前を付けます**。
+[BioGlyph](https://bioglyph.app/) は同じ領域の商用ツールです。
 
 `npm run playground` でビルドして [`examples/playground.html`](examples/playground.html)
 が開きます。DSL と AbML を切り替えながら記法を編集し、描画がどう変わるかを確認できます。
@@ -453,4 +496,12 @@ OpenChemLib（このリポジトリの devDependency であり、ライブラリ
 
 ## ライセンス
 
-MIT
+[PolyForm Noncommercial 1.0.0](LICENSE)。研究・教育・個人利用、および慈善団体・
+教育機関・公的研究機関・政府機関による利用は無償です。**商用利用には別途
+ライセンスが必要**ですのでご相談ください。
+
+これは source-available ライセンスであって OSI 承認のオープンソースではありません。
+組織によっては両者を別扱いする方針があります。
+
+同梱している定常領域配列は UniProt（CC BY 4.0）由来です。アクセッションは
+`src/import/constant-regions.ts` に記録しています。

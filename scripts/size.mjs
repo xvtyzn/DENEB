@@ -43,7 +43,7 @@ function weigh(files) {
   return { raw, gzip };
 }
 
-const entries = ['index', 'react', 'presets', 'lint', 'diff', 'panel', 'import', 'abml']
+const entries = ['index', 'react', 'presets', 'lint', 'diff', 'panel', 'import', 'abml', 'veritas']
   .map((name) => ({ name, file: resolve(root, `dist/${name}.js`) }))
   .filter((e) => existsSync(e.file));
 

@@ -235,9 +235,15 @@ function assignChainKinds(chains: NChain[], explicit: Set<string>): void {
  * A common-light-chain design lists one light chain for several heavy chains.
  * Each heavy chain still needs its own light chain in the picture, so the
  * shared one is cloned up to the heavy-chain count.
+ *
+ * Only heavy chains that have somewhere to put one count. An scFv-Fc arm has
+ * no CH1, so cloning a light chain onto it would invent a chain the molecule
+ * does not have — which is exactly the shape of a one-armed asymmetric format.
  */
 function materializeCommonLightChain(chains: NChain[], diagnostics: Diagnostic[]): void {
-  const heavies = chains.filter((c) => c.kind === 'heavy');
+  const heavies = chains.filter(
+    (c) => c.kind === 'heavy' && c.domains.some((d) => d.type === 'CH1' || d.type === 'CL'),
+  );
   const lights = chains.filter((c) => c.kind === 'light');
   if (lights.length !== 1 || heavies.length < 2) return;
   const source = lights[0]!;

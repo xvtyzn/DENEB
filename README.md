@@ -372,8 +372,8 @@ raw domain id — handy for linking the diagram to a sequence viewer.
 
 Everything past drawing lives behind its own subpath, so a page that only
 renders a diagram never loads any of it. The core entry is 26 kB gzipped and
-does not reach the presets, the linter, the diff, the importers or AbML —
-checked by
+does not reach the presets, the linter, the diff, the importers or the two
+notations — checked by
 `tests/boundaries.test.ts` in source and by `npm run size` in the built output.
 
 | Import | Gzipped | What it is |
@@ -386,6 +386,7 @@ checked by
 | `antibody-viewer/panel` | 29 kB | multi-molecule figures |
 | `antibody-viewer/import` | 3 kB | ANARCI / IgBLAST adapters |
 | `antibody-viewer/abml` | 13 kB | AbML notation, read and written |
+| `antibody-viewer/veritas` | 13 kB | VERITAS format names, read and written |
 
 ### Design checks
 
@@ -506,6 +507,45 @@ Specificity letters a source already uses are kept rather than reassigned, and
 `ANTI` names survive both directions, so a string read in and written back out
 is normally the same string.
 
+### VERITAS, named and read
+
+```ts
+import { toVeritas, parseVeritas } from 'antibody-viewer/veritas';
+
+const { name, notes } = toVeritas(construct);
+// "[(CD3)Fab*(HER2)Fab]-heteroFc(KiH)"
+
+const { construct: drawn } = parseVeritas('scFv-Fc-scFv');
+```
+
+[VERITAS](https://doi.org/10.1080/19420862.2023.2207232) (Verified Taxonomy for
+Antibodies, Amgen) names a format around its multimerization centre:
+`[N-terminal appendages]–centre–[C-terminal appendages]`, with `*` between
+chains, `:` for a noncovalent pair, `(Target)` before a module and the
+heterodimerization strategy after the centre.
+
+`toVeritas` is the direction most people want: hand it a construct and it says
+what the format is called. Every bundled preset gets a name, each name reads
+back into a drawable molecule, and the name survives that round trip.
+
+Where the paper expands a name, so does this. An arm whose light chain carries
+an appendage cannot hide inside a `Fab`, so it becomes `…LC:Fd` over an `Fc`
+centre rather than being called an IgG it is not; two arms binding different
+targets become `[(A)Fab*(B)Fab]–heteroFc`. A molecule with no centre at all — a
+BiTE, a diabody — is named by its modules, with the absence stated.
+
+VERITAS is a name, not a construct: the scheme has no notation for linker
+length, the hinge, isotype, conjugation or residue-level engineering. Reading a
+name therefore fills those in with this library's defaults, and naming a
+construct reports what the name had to leave out:
+
+```ts
+toVeritas(getPreset('adc-igg')).notes;
+// ['VERITAS names architecture, not residue-level engineering: drug is not in the name.', …]
+```
+
+For anything richer than the architecture, use the DSL.
+
 ### The sequence, coloured like the diagram
 
 ```tsx
@@ -560,6 +600,10 @@ identifyConstantRegion(sequence, from, kind, minIdentity?): ConstantMatch | null
 // antibody-viewer/abml
 parseAbML(source): { construct, diagnostics }
 toAbML(construct, { multiline?, includeTargetNames? }): string
+
+// antibody-viewer/veritas
+parseVeritas(name): { construct, diagnostics }
+toVeritas(construct, { includeTargets?, includeStrategy? }): { name, notes }
 ```
 
 The React components take `construct` or `dsl`. There is no `preset` prop:
@@ -617,9 +661,21 @@ follow.
 
 [AbML and abYdraw](https://www.tandfonline.com/doi/full/10.1080/19420862.2022.2101183)
 are a published notation and renderer for antibody formats; AbML is read and
-written here through `antibody-viewer/abml`. [BioGlyph](https://bioglyph.app/)
-covers the same ground commercially.
+written here through `antibody-viewer/abml`.
+[VERITAS](https://doi.org/10.1080/19420862.2023.2207232) is Amgen's naming
+scheme for the same formats, through `antibody-viewer/veritas`. The two answer
+different questions — AbML writes the molecule, VERITAS names the architecture.
+[BioGlyph](https://bioglyph.app/) covers the same ground commercially.
 
 ## License
 
-MIT
+[PolyForm Noncommercial 1.0.0](LICENSE). Free for research, teaching, personal
+projects, and use by charities, educational institutions, public research
+organizations and government bodies. **Commercial use requires a separate
+licence** — ask.
+
+Note that this is a source-available licence, not an OSI-approved open-source
+one, and some organizations' policies treat the two differently.
+
+The bundled constant-region sequences are derived from UniProt (CC BY 4.0);
+their accessions are recorded in `src/import/constant-regions.ts`.

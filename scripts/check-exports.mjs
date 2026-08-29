@@ -24,6 +24,7 @@ import { diff } from 'antibody-viewer/diff';
 import { renderPanel, renderComparison } from 'antibody-viewer/panel';
 import { fromANARCI, fromIgBLAST } from 'antibody-viewer/import';
 import { parseAbML, toAbML } from 'antibody-viewer/abml';
+import { parseVeritas, toVeritas } from 'antibody-viewer/veritas';
 
 const construct: Construct = getPreset(presetNames()[0]!);
 renderSVG(construct);
@@ -35,6 +36,7 @@ renderComparison(construct, construct);
 fromANARCI('');
 fromIgBLAST('');
 parseAbML(toAbML(construct));
+parseVeritas(toVeritas(construct).name);
 `;
 
 const TSX = `

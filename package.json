@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Declarative SVG visualization of antibody formats — bispecific/multispecific architectures, domain colouring by specificity, and engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs).",
   "type": "module",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": [
     "antibody",
     "bispecific",
@@ -66,6 +66,11 @@
       "types": "./dist/abml/index.d.ts",
       "import": "./dist/abml.js",
       "require": "./dist/abml.cjs"
+    },
+    "./veritas": {
+      "types": "./dist/veritas/index.d.ts",
+      "import": "./dist/veritas.js",
+      "require": "./dist/veritas.cjs"
     },
     "./package.json": "./package.json"
   },
