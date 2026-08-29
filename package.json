@@ -1,0 +1,110 @@
+{
+  "name": "antibody-viewer",
+  "version": "0.1.0",
+  "description": "Declarative SVG visualization of antibody formats — bispecific/multispecific architectures, domain colouring by specificity, and engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs).",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "antibody",
+    "bispecific",
+    "multispecific",
+    "svg",
+    "visualization",
+    "immunoglobulin",
+    "biologics"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.ja.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
+    },
+    "./presets": {
+      "types": "./dist/presets/index.d.ts",
+      "import": "./dist/presets.js",
+      "require": "./dist/presets.cjs"
+    },
+    "./lint": {
+      "types": "./dist/lint/index.d.ts",
+      "import": "./dist/lint.js",
+      "require": "./dist/lint.cjs"
+    },
+    "./diff": {
+      "types": "./dist/diff/index.d.ts",
+      "import": "./dist/diff.js",
+      "require": "./dist/diff.cjs"
+    },
+    "./panel": {
+      "types": "./dist/render/panel.d.ts",
+      "import": "./dist/panel.js",
+      "require": "./dist/panel.cjs"
+    },
+    "./import": {
+      "types": "./dist/import/index.d.ts",
+      "import": "./dist/import.js",
+      "require": "./dist/import.cjs"
+    },
+    "./abml": {
+      "types": "./dist/abml/index.d.ts",
+      "import": "./dist/abml.js",
+      "require": "./dist/abml.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gallery": "vite build && node scripts/gallery.mjs",
+    "playground": "vite build && vite preview --outDir . --port 5174 --open /examples/playground.html",
+    "prepublishOnly": "npm run build",
+    "adc-demo": "vite build && node scripts/adc-demo.mjs",
+    "size": "vite build && node scripts/size.mjs",
+    "check-exports": "vite build && node scripts/check-exports.mjs",
+    "constant-regions": "node scripts/fetch-constant-regions.mjs",
+    "panel-demo": "vite build && node scripts/panel-demo.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=17",
+    "react-dom": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "openchemlib": "^9.25.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.4.0",
+    "vitest": "^3.0.0"
+  }
+}

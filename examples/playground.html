@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>antibody-viewer playground</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; color: #1c222b; background: #f6f7f9; }
+  header { padding: 16px 20px; background: #fff; border-bottom: 1px solid #e3e6ea; }
+  h1 { margin: 0; font-size: 16px; }
+  header p { margin: 4px 0 0; color: #6b7280; font-size: 12px; }
+  main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; padding: 16px 20px; align-items: start; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .panel { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 12px; }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
+  label:first-child { margin-top: 0; }
+  label.inline { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-weight: 400; }
+  textarea { width: 100%; min-height: 190px; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px; border: 1px solid #d6dae0; border-radius: 6px; resize: vertical; }
+  select, button { font: inherit; padding: 5px 9px; border: 1px solid #d6dae0; border-radius: 6px; background: #fff; }
+  button { cursor: pointer; }
+  button:hover { background: #f1f3f5; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #stage { position: relative; display: flex; justify-content: center; padding: 8px; overflow-x: auto; }
+  #linear { margin-top: 12px; border-top: 1px dashed #e3e6ea; padding-top: 12px; overflow-x: auto; }
+  #tip { position: absolute; pointer-events: none; background: rgba(20,24,31,.94); color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 11px; white-space: nowrap; transform: translate(-50%, calc(-100% - 8px)); opacity: 0; transition: opacity .08s; }
+  #errors { color: #b91c1c; font-size: 12px; white-space: pre-wrap; }
+  #diagnostics { color: #a16207; font-size: 12px; margin-top: 8px; }
+  #lint { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+  #lint li { padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; border: 1px solid transparent; }
+  #lint li:hover, #lint li.on { background: #fdf6e3; border-color: #e6d9a8; }
+  #lint li.info { color: #4b5563; }
+  #lint li.warning { color: #92400e; }
+  #lint li.error { color: #b91c1c; }
+  #lint .hint { display: block; opacity: .75; margin-top: 2px; }
+  #lint .clean { color: #15803d; padding-left: 8px; }
+  .av-domain:hover { filter: brightness(1.06); cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>antibody-viewer playground</h1>
+  <p>Edit the notation on the left — the compact DSL or AbML v1.06. Hover a domain
+  for its annotation, click to pin a highlight.</p>
+</header>
+<main>
+  <div class="panel">
+    <label for="preset">Preset</label>
+    <div class="row"><select id="preset"></select></div>
+    <label for="dsl">Notation</label>
+    <div class="row">
+      <select id="notation">
+        <option value="dsl">DSL</option>
+        <option value="abml">AbML</option>
+      </select>
+    </div>
+    <textarea id="dsl" spellcheck="false"></textarea>
+    <div id="errors"></div>
+    <label for="mode">Colour by</label>
+    <div class="row">
+      <select id="mode">
+        <option value="specificity">specificity</option>
+        <option value="chain">chain</option>
+        <option value="domain">domain type</option>
+      </select>
+      <label class="inline"><input type="checkbox" id="labels"> labels</label>
+      <label class="inline"><input type="checkbox" id="termini"> N/C</label>
+    </div>
+    <div class="row">
+      <button id="svg">Download SVG</button>
+      <button id="png">Download PNG</button>
+    </div>
+    <div id="diagnostics"></div>
+    <label>Design check</label>
+    <ul id="lint"></ul>
+  </div>
+  <div class="panel">
+    <div id="stage"><div id="tip"></div></div>
+    <div id="linear"></div>
+  </div>
+</main>
+
+<script type="module">
+import {
+  renderSVG, renderLinear, parseDSL, stringifyDSL, downloadSVG, downloadPNG,
+} from '../dist/index.js';
+import { presetNames, getPreset } from '../dist/presets.js';
+import { lint } from '../dist/lint.js';
+import { parseAbML, toAbML } from '../dist/abml.js';
+
+// Reading and writing are picked together so switching notation rewrites what
+// is in the box rather than reinterpreting it as the other language.
+const NOTATIONS = {
+  dsl: { read: parseDSL, write: stringifyDSL },
+  abml: { read: (text) => parseAbML(text).construct, write: (c) => toAbML(c) },
+};
+const notation = () => NOTATIONS[$('notation').value];
+
+const $ = (id) => document.getElementById(id);
+const selected = new Set();
+let current = null;
+let previous = 'dsl';
+
+for (const name of presetNames()) {
+  const option = document.createElement('option');
+  option.value = option.textContent = name;
+  $('preset').append(option);
+}
+$('preset').value = 'igg-kih';
+loadPreset();
+
+$('preset').addEventListener('change', loadPreset);
+$('notation').addEventListener('change', switchNotation);
+$('dsl').addEventListener('input', draw);
+$('mode').addEventListener('change', draw);
+$('labels').addEventListener('change', draw);
+$('termini').addEventListener('change', draw);
+$('svg').addEventListener('click', () => current && downloadSVG(current.svg, 'antibody.svg'));
+$('png').addEventListener('click', () => current && downloadPNG(current.svg, 'antibody.png'));
+
+function loadPreset() {
+  $('dsl').value = notation().write(getPreset($('preset').value));
+  selected.clear();
+  draw();
+}
+
+/** Carry whatever is in the box across to the other notation. */
+function switchNotation() {
+  const construct = read($('dsl').value, previous);
+  if (construct) $('dsl').value = notation().write(construct);
+  else loadPreset();
+  previous = $('notation').value;
+  draw();
+}
+
+function read(text, using = $('notation').value) {
+  try {
+    return NOTATIONS[using].read(text);
+  } catch {
+    return null;
+  }
+}
+
+function draw() {
+  let construct;
+  try {
+    construct = notation().read($('dsl').value);
+    $('errors').textContent = '';
+  } catch (error) {
+    $('errors').textContent = String(error.message ?? error);
+    return;
+  }
+  const options = {
+    colorMode: $('mode').value,
+    highlight: [...selected],
+    showLabels: $('labels').checked,
+    showTermini: $('termini').checked,
+    scale: 1.7,
+  };
+  current = renderSVG(construct, options);
+  $('stage').innerHTML = '<div id="tip"></div>' + current.svg;
+  $('linear').innerHTML = renderLinear(construct, {
+    colorMode: options.colorMode,
+    highlight: options.highlight,
+    showLabels: options.showLabels,
+    showTitle: false,
+    showLegend: false,
+  }).svg;
+
+  const warnings = current.layout.diagnostics.filter((d) => d.level !== 'info');
+  $('diagnostics').textContent = warnings.map((d) => `${d.level}: ${d.message}`).join('\n');
+  showLint(construct);
+  wire();
+}
+
+// Design findings, and clicking one lights up what it is talking about.
+function showLint(construct) {
+  const list = $('lint');
+  list.innerHTML = '';
+  const findings = lint(construct);
+  if (findings.length === 0) {
+    list.innerHTML = '<li class="clean">Nothing to flag.</li>';
+    return;
+  }
+  for (const finding of findings) {
+    const item = document.createElement('li');
+    item.className = finding.level;
+    const pinned = finding.refs.every((r) => selected.has(r));
+    if (pinned) item.classList.add('on');
+    item.innerHTML =
+      `<b>${finding.rule}</b> — ${finding.message}` +
+      (finding.hint ? `<span class="hint">${finding.hint}</span>` : '');
+    item.addEventListener('click', () => {
+      for (const ref of finding.refs) {
+        if (pinned) selected.delete(ref);
+        else selected.add(ref);
+      }
+      draw();
+    });
+    list.append(item);
+  }
+}
+
+function wire() {
+  const tip = $('tip');
+  for (const root of [$('stage'), $('linear')]) {
+    root.addEventListener('mousemove', (event) => {
+      const group = event.target.closest('[data-domain-id]');
+      if (!group) { tip.style.opacity = 0; return; }
+      const box = $('stage').getBoundingClientRect();
+      tip.textContent = group.querySelector('title')?.textContent ?? '';
+      tip.style.left = `${event.clientX - box.left}px`;
+      tip.style.top = `${event.clientY - box.top}px`;
+      tip.style.opacity = 1;
+    });
+    root.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+    root.addEventListener('click', (event) => {
+      const id = event.target.closest('[data-domain-id]')?.dataset.domainId;
+      if (!id) return;
+      selected.has(id) ? selected.delete(id) : selected.add(id);
+      draw();
+    });
+  }
+}
+</script>
+</body>
+</html>

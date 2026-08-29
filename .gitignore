@@ -1,0 +1,16 @@
+node_modules/
+dist/
+
+# Written by npm run gallery / adc-demo / panel-demo. The page that is source,
+# examples/playground.html, is tracked; these three are output.
+examples/gallery.html
+examples/adc.html
+examples/panel.html
+
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Personal Claude Code settings; .claude/settings.json is shared.
+.claude/settings.local.json

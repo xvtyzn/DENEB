@@ -1,0 +1,504 @@
+import { describe, expect, it } from 'vitest';
+import { layout, normalize, parseDSL, renderSVG, resolveModification } from '../src/index';
+import { DOMAIN_CATALOG, MODIFICATION_CATALOG } from '../src/model/catalog';
+import { getPreset } from '../src/presets/index';
+import type { ModificationType } from '../src/model/types';
+
+describe('conjugated payloads', () => {
+  it('parses the compound, linker, DAR, copy count and site from the DSL', () => {
+    const c = parseDSL('HC: CL[drug=MMAE/vc-PAB/4/2/interchain cysteine]');
+    expect(c.chains[0]!.domains[0]!.modifications).toEqual([
+      {
+        type: 'drug',
+        payload: {
+          name: 'MMAE',
+          linker: 'vc-PAB',
+          dar: 4,
+          count: 2,
+          site: 'interchain cysteine',
+        },
+      },
+    ]);
+  });
+
+  it('accepts a bare compound name', () => {
+    const c = parseDSL('HC: CL[drug=MMAE]');
+    expect(c.chains[0]!.domains[0]!.modifications![0]!.payload).toEqual({ name: 'MMAE' });
+  });
+
+  it('draws one payload glyph per copy, with a single shared name', () => {
+    const { svg } = renderSVG(getPreset('adc-igg'));
+    // Two light chains, two copies each.
+    expect((svg.match(/data-payload="MMAE"/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect((svg.match(/class="av-payload-label"/g) ?? []).length).toBe(2);
+    expect(svg).toContain('>MMAE<');
+  });
+
+  it('summarises the conjugation in its own legend section', () => {
+    const { svg } = renderSVG(getPreset('adc-igg'));
+    expect(svg).toContain('Conjugation');
+    expect(svg).toContain('MMAE · vc-PAB · DAR 4 · interchain cysteine');
+  });
+
+  it('breaks the stalk for a non-cleavable linker', () => {
+    const cleavable = renderSVG(parseDSL('C1: VH(x)~VL(x)'), {}).svg;
+    const nonCleavable = renderSVG(
+      {
+        chains: [
+          {
+            id: 'C1',
+            domains: [
+              {
+                type: 'VHH',
+                specificity: 'x',
+                modifications: [
+                  { type: 'drug', payload: { name: 'DM1', cleavable: false } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {},
+    ).svg;
+    expect(nonCleavable).toContain('stroke-dasharray');
+    expect(cleavable).not.toContain('av-payload-label');
+  });
+
+  it('honours the payload shape and colour', () => {
+    const { svg } = renderSVG({
+      chains: [
+        {
+          id: 'C1',
+          domains: [
+            {
+              type: 'VHH',
+              specificity: 'x',
+              modifications: [
+                { type: 'drug', payload: { name: 'Tc-99m', shape: 'triangle', color: '#00aa88' } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(svg).toContain('#00aa88');
+    expect(svg).toContain('>Tc-99m<');
+  });
+
+  it('can suppress payload names', () => {
+    const { svg } = renderSVG(getPreset('adc-igg'), { showPayloadNames: false });
+    expect(svg).not.toContain('av-payload-label');
+    expect(svg).toContain('data-payload="MMAE"');
+  });
+});
+
+describe('payload structures', () => {
+  const structure = { svg: '<circle cx="5" cy="5" r="4"/>', viewBox: '0 0 10 10' };
+  const construct = {
+    chains: [
+      {
+        id: 'C1',
+        domains: [
+          {
+            type: 'VHH' as const,
+            specificity: 'X',
+            modifications: [
+              { type: 'drug' as const, payload: { name: 'MMAE', count: 3, structure } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('draws a captioned thumbnail in the legend by default', () => {
+    const { svg } = renderSVG(construct);
+    expect(svg).toContain('Structures');
+    expect(svg).toContain('av-structure-frame');
+    expect(svg).toContain('<circle cx="5" cy="5" r="4"/>');
+    expect(svg).toContain('viewBox="0 0 10 10"');
+    // The payload glyph still marks the conjugation site on the molecule.
+    expect((svg.match(/class="av-marker"/g) ?? []).length).toBeGreaterThan(0);
+  });
+
+  it('replaces the payload glyph with a framed panel on the linker', () => {
+    const { svg } = renderSVG(construct, { showStructures: 'inline' });
+    expect(svg).toContain('av-payload-structure');
+    // One drawing however many copies are conjugated.
+    expect((svg.match(/class="av-structure"/g) ?? []).length).toBe(1);
+    // The panel is counter-rotated so the chemistry stays upright.
+    expect(svg).toMatch(/av-payload-structure[^>]*rotate\(/);
+  });
+
+  it('can be turned off entirely', () => {
+    const { svg } = renderSVG(construct, { showStructures: 'none' });
+    expect(svg).not.toContain('av-structure');
+    expect(svg).toContain('data-payload="MMAE"');
+  });
+
+  it('keeps an inline structure inside the viewBox', () => {
+    const wide = { ...structure, width: 120, height: 90 };
+    const { scene, layout: result } = renderSVG(
+      {
+        chains: [
+          {
+            id: 'C1',
+            domains: [
+              {
+                type: 'VHH' as const,
+                specificity: 'X',
+                modifications: [
+                  { type: 'drug' as const, payload: { name: 'MMAE', structure: wide } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      { showStructures: 'inline', showLegend: false },
+    );
+    expect(result.domains).toHaveLength(1);
+    expect(scene.viewBox.width).toBeGreaterThan(wide.width);
+  });
+
+  it('lands the bond on the atom named by `attach`, in the artwork\'s own units', () => {
+    const { svg } = renderSVG(
+      {
+        chains: [
+          {
+            id: 'C1',
+            domains: [
+              {
+                type: 'VHH' as const,
+                specificity: 'X',
+                modifications: [
+                  {
+                    type: 'drug' as const,
+                    payload: {
+                      name: 'P',
+                      site: 'interchain cysteine',
+                      // The conjugated atom sits at the far right of a 200-wide
+                      // drawing, a quarter of the way down.
+                      structure: {
+                        svg: '<circle cx="5" cy="5" r="4"/>',
+                        viewBox: '0 0 200 100',
+                        width: 80,
+                        height: 40,
+                        attach: { x: 200, y: 25 },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      { showStructures: 'inline' },
+    );
+    // Placed so that atom lands on the origin of the counter-rotated panel:
+    // 80 units to its left, 10 above (a quarter of 40).
+    expect(svg).toContain('x="-80"');
+    expect(svg).toContain('y="-10"');
+    // The drawing carries its own sulfur, so no second atom label is added.
+    expect(svg).not.toContain('av-attachment-label');
+  });
+
+  it('writes the attachment atom on the bond when there is no structure', () => {
+    const { svg } = renderSVG({
+      chains: [
+        {
+          id: 'C1',
+          domains: [
+            {
+              type: 'VHH' as const,
+              specificity: 'X',
+              modifications: [
+                { type: 'drug' as const, payload: { name: 'P', site: 'surface lysine' } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(svg).toContain('av-attachment-label');
+    expect(svg).toContain('>NH<');
+  });
+
+  it('brackets the linker-payload with the drug-to-antibody ratio', () => {
+    const { svg } = renderSVG(
+      {
+        chains: [
+          {
+            id: 'C1',
+            domains: [
+              {
+                type: 'VHH' as const,
+                specificity: 'X',
+                modifications: [
+                  {
+                    type: 'drug' as const,
+                    payload: {
+                      name: 'P',
+                      dar: 8,
+                      structure: { svg: '<circle cx="5" cy="5" r="4"/>', viewBox: '0 0 10 10' },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      { showStructures: 'inline' },
+    );
+    expect((svg.match(/class="av-payload-bracket"/g) ?? []).length).toBe(2);
+    expect(svg).toContain('>n = 8<');
+  });
+
+  it('spells the chemistry out at one site and marks the rest with glyphs', () => {
+    const twoSites = {
+      chains: [
+        {
+          id: 'HC',
+          copies: 2,
+          domains: [
+            { type: 'VH' as const, specificity: 'X' },
+            { type: 'CH1' as const },
+            { type: 'hinge' as const },
+            {
+              type: 'CH2' as const,
+              modifications: [
+                { type: 'drug' as const, payload: { name: 'P', structure } },
+              ],
+            },
+            { type: 'CH3' as const },
+          ],
+        },
+        { id: 'LC', copies: 2, domains: [{ type: 'VL' as const, specificity: 'X' }, { type: 'CL' as const }] },
+      ],
+    };
+    const once = renderSVG(twoSites, { showStructures: 'inline', showLegend: false });
+    expect((once.svg.match(/class="av-structure"/g) ?? []).length).toBe(1);
+    // The other site still shows where the conjugation is.
+    expect((once.svg.match(/data-modification-type="drug"/g) ?? []).length).toBeGreaterThan(1);
+
+    const both = renderSVG(twoSites, {
+      showStructures: 'inline',
+      repeatStructures: true,
+      showLegend: false,
+    });
+    expect((both.svg.match(/class="av-structure"/g) ?? []).length).toBe(2);
+  });
+
+  it('keeps atom labels readable when a mirrored drawing is asked for', () => {
+    const labelled = {
+      svg: '<text x="100" y="50" font-size="14">N</text><text x="109" y="50" font-size="14">H</text><text x="118" y="54" font-size="9">2</text>',
+      viewBox: '0 0 200 100',
+      width: 60,
+      height: 30,
+      attach: { x: 200, y: 50 },
+      mirror: true,
+    };
+    const { svg } = renderSVG(
+      {
+        chains: [
+          {
+            id: 'HC',
+            copies: 2,
+            domains: [
+              { type: 'VH' as const, specificity: 'X' },
+              { type: 'CH1' as const },
+              { type: 'hinge' as const },
+              {
+                type: 'CH2' as const,
+                modifications: [
+                  { type: 'drug' as const, payload: { name: 'P', structure: labelled } },
+                ],
+              },
+              { type: 'CH3' as const },
+            ],
+          },
+          { id: 'LC', copies: 2, domains: [{ type: 'VL' as const, specificity: 'X' }, { type: 'CL' as const }] },
+        ],
+      },
+      { showStructures: 'inline', repeatStructures: true, showLegend: false },
+    );
+    // Each glyph is flipped back about its own anchor, so nothing reads backwards.
+    const flipped = [...svg.matchAll(/<text[^>]*transform="translate\(([-\d.]+),0\) scale\(-1,1\)"/g)];
+    expect(flipped.length).toBe(3);
+    expect(svg).toContain('text-anchor="end"');
+    // And the run is re-laid so N, H, 2 still read in that order once mirrored:
+    // after the outer flip, x descends across the sequence.
+    const xs = [
+      ...svg.matchAll(
+        /<text[^>]*\sx="([-\d.]+)"[^>]*scale\(-1,1\)"[^>]*>([NH2])<\/text>/g,
+      ),
+    ].map((m) => ({ glyph: m[2]!, x: Number(m[1]) }));
+    const at = (glyph: string) => xs.find((g) => g.glyph === glyph)!.x;
+    expect(at('N')).toBeGreaterThan(at('H'));
+    expect(at('H')).toBeGreaterThan(at('2'));
+  });
+
+  it('accepts an image reference instead of markup', () => {
+    const { svg } = renderSVG(
+      {
+        chains: [
+          {
+            id: 'C1',
+            domains: [
+              {
+                type: 'VHH' as const,
+                specificity: 'X',
+                modifications: [
+                  {
+                    type: 'drug' as const,
+                    payload: {
+                      name: 'DM1',
+                      structure: { href: 'data:image/png;base64,AAA', caption: 'DM1 (maytansinoid)' },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {},
+    );
+    expect(svg).toContain('<image');
+    expect(svg).toContain('href="data:image/png;base64,AAA"');
+    expect(svg).toContain('DM1 (maytansinoid)');
+  });
+});
+
+describe('modification catalog', () => {
+  it('gives every type a marker, a legend label and an edge', () => {
+    for (const [type, spec] of Object.entries(MODIFICATION_CATALOG)) {
+      expect(spec.label, type).toBeTruthy();
+      expect(spec.marker, type).toBeTruthy();
+      expect(['interface', 'surface'], type).toContain(spec.side);
+    }
+  });
+
+  it('draws every catalog entry without error and lists it once in the legend', () => {
+    for (const type of Object.keys(MODIFICATION_CATALOG) as ModificationType[]) {
+      const { svg } = renderSVG({
+        chains: [
+          {
+            id: 'HC',
+            domains: [
+              { type: 'VH', specificity: 'X' },
+              { type: 'CH1' },
+              { type: 'hinge' },
+              { type: 'CH2' },
+              { type: 'CH3', modifications: [{ type }] },
+            ],
+          },
+          { id: 'LC', domains: [{ type: 'VL', specificity: 'X' }, { type: 'CL' }] },
+        ],
+      });
+      expect(svg, type).toContain(`data-modification-type="${type}"`);
+      expect((svg.match(/class="av-legend-marker"/g) ?? []).length, type).toBe(1);
+    }
+  });
+
+  it('puts interface marks towards the partner and surface marks away from it', () => {
+    // CH2 pairs across the axis, so its glycan must hang outwards while the
+    // Fc-silencing dots sit on the interface between the two CH2 domains.
+    const result = layout(
+      parseDSL('HC: VH(X)-CH1-h-CH2[lala, glycan]-CH3 *2\nLC: VL(X)-CL *2'),
+    );
+    const { svg } = renderSVG(result);
+    // The legend draws its own copy at the origin; only the two on the molecule
+    // carry an offset.
+    const dots = [...svg.matchAll(/<circle cx="(-?[\d.]+)"[^>]*data-modification-type="lala"/g)]
+      .map(([, x]) => Number(x))
+      .filter((x) => x !== 0);
+    expect(dots.length).toBe(2);
+    expect(svg).toContain('data-modification-type="glycan"');
+    // Interface marks sit inboard of the domain's own half-width.
+    for (const x of dots) expect(Math.abs(x)).toBeLessThan(5);
+  });
+
+  it('resolves aliases and keeps catalog residues', () => {
+    const r = resolveModification({ type: 'knob' }, 'd');
+    expect(r.residues).toEqual(['T366W']);
+    expect(parseDSL('HC: CH2[n297]').chains[0]!.domains[0]!.modifications).toEqual([
+      { type: 'glycan' },
+    ]);
+    expect(parseDSL('HC: CH2[de]').chains[0]!.domains[0]!.modifications).toEqual([
+      { type: 'adcc-enhanced' },
+    ]);
+  });
+});
+
+describe('single-chain Fv direction', () => {
+  const vhvl = 'C1: VH(X)~VL(X)';
+  const vlvh = 'C1: VL(X)~VH(X)';
+
+  it('draws VH~VL and VL~VH the other way round, not as the same picture', () => {
+    const order = (dsl: string): 'VH-first' | 'VL-first' => {
+      const { domains } = layout(parseDSL(dsl));
+      const vh = domains.find((d) => d.domain.type === 'VH')!;
+      const vl = domains.find((d) => d.domain.type === 'VL')!;
+      return vh.center.x < vl.center.x ? 'VH-first' : 'VL-first';
+    };
+    expect(order(vhvl)).toBe('VH-first');
+    expect(order(vlvh)).toBe('VL-first');
+    expect(renderSVG(parseDSL(vhvl)).svg).not.toBe(renderSVG(parseDSL(vlvh)).svg);
+  });
+
+  it('runs the linker from one domain\'s C-terminal face to the next one\'s N-terminal face', () => {
+    const { domains, connectors } = layout(parseDSL(vhvl));
+    const vh = domains.find((d) => d.domain.type === 'VH')!;
+    const vl = domains.find((d) => d.domain.type === 'VL')!;
+    const linker = connectors.find((c) => c.kind === 'linker')!;
+    // Every domain is drawn N-terminus up, so the strand leaves the bottom of
+    // VH and arrives at the top of VL...
+    expect(linker.a.y).toBeGreaterThan(vh.center.y);
+    expect(linker.b.y).toBeLessThan(vl.center.y);
+    // ...while the two domains stay level and side by side, the way an Fv packs.
+    expect(vh.center.y).toBeCloseTo(vl.center.y, 5);
+    // Which takes a cubic: the strand has to leave downwards and arrive downwards.
+    expect(linker.via).toHaveLength(2);
+  });
+
+  it('gives a linker-joined pair more daylight than a natively paired one', () => {
+    const gapOf = (dsl: string) => {
+      const { domains } = layout(parseDSL(dsl));
+      const vh = domains.find((d) => d.domain.type === 'VH')!;
+      const vl = domains.find((d) => d.domain.type === 'VL')!;
+      return Math.abs(vh.center.x - vl.center.x);
+    };
+    expect(gapOf('C1: VH(X)~VL(X)')).toBeGreaterThan(gapOf('HC: VH(X)-CH1\nLC: VL(X)-CL'));
+  });
+
+  it('marks the free termini when asked', () => {
+    const plain = renderSVG(parseDSL(vhvl)).svg;
+    const marked = renderSVG(parseDSL(vhvl), { showTermini: true }).svg;
+    expect(plain).not.toContain('av-terminus');
+    expect(marked).toContain('data-terminus="N"');
+    expect(marked).toContain('data-terminus="C"');
+  });
+});
+
+describe('glyph style', () => {
+  it('draws every domain as a box, with no labels by default', () => {
+    const { svg } = renderSVG(getPreset('igg-kih'));
+    expect(svg).not.toContain('av-domain-label');
+    expect(renderSVG(getPreset('igg-kih'), { showLabels: true }).svg).toContain('av-domain-label');
+  });
+
+  it('tells variable from constant domains by corner radius, not by outline shape', () => {
+    expect(DOMAIN_CATALOG.VH.glyph).toBe('variable');
+    expect(DOMAIN_CATALOG.CH1.glyph).toBe('constant');
+    expect(DOMAIN_CATALOG.VH.corner).toBeGreaterThan(DOMAIN_CATALOG.CH1.corner);
+    // Both outlines are the same closed rounded box.
+    const { svg } = renderSVG(normalize(getPreset('igg-kih')));
+    for (const d of [...svg.matchAll(/<path d="(M[^"]*Z)"/g)].map(([, d]) => d!)) {
+      expect(d.includes('Q') || d.includes('A')).toBe(true);
+    }
+  });
+});
