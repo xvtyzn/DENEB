@@ -1,5 +1,11 @@
 # DENEB
 
+[![CI](https://github.com/xvtyzn/DENEB/actions/workflows/ci.yml/badge.svg)](https://github.com/xvtyzn/DENEB/actions/workflows/ci.yml)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-2f6f5e)](LICENSE)
+![Node.js >=18](https://img.shields.io/badge/node-%3E%3D18-339933?logo=nodedotjs&logoColor=white)
+![TypeScript 5.7+](https://img.shields.io/badge/TypeScript-5.7%2B-3178C6?logo=typescript&logoColor=white)
+![Core gzip: 26 kB](https://img.shields.io/badge/core_gzip-26_kB-555555)
+
 **D**rawing **E**ngine for **N**otated, **E**ngineered **B**iologics
 
 [日本語](README.ja.md) · [Full reference](docs/reference.md)
