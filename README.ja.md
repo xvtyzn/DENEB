@@ -17,6 +17,8 @@
 **このライブラリはアノテーションを描くだけで、アノテーション自体は作りません。**
 配列からのドメイン認識（HMM / 機械学習）は別途用意し、その出力を渡してください。
 
+![6 種類の抗体フォーマットを同じパレットで描いたもの](docs/images/formats.png)
+
 - ランタイム依存ゼロ。コアはフレームワーク非依存で SVG 文字列を返すため、
   Node 上でも動きます（SSR・静的書き出し・スナップショットテスト）。
 - React コンポーネント（`antibody-viewer/react`）は**同じ Scene** を React 要素
@@ -144,6 +146,11 @@ ADC のペイロードは名前を書くだけでなく**図として描かれ�
 化合物のグリフと名前が描かれ、リンカー・DAR・コンジュゲーション部位は凡例の
 `Conjugation` セクションにまとまります。
 
+![鎖間システイン結合の ADC。リンカーが繋がっているチオールまで描かれている](docs/images/adc.png)
+
+リンカーがぶら下がっている**硫黄そのもの**が結合線上に描かれ、リンカーは
+「化合物っぽい丸」ではなく実際の化学構造として描かれます。
+
 ```ts
 {
   type: 'CH2',
@@ -229,6 +236,9 @@ payload: {
 
 ## 可視化できる改変
 
+![knob-into-hole が CH3 の輪郭に彫り込まれた IgG(kih) バイスペシフィック](docs/images/bispecific.png)
+
+
 | 分類 | 種類 |
 | --- | --- |
 | ヘテロ二量体化 | `knob` `hole` `charge+` `charge-` `duobody` `seed` `ew-rvt` `ha-tf` |
@@ -241,6 +251,11 @@ payload: {
 未知の名前は `{ type: 'custom', label }` として保持され、エラーにはなりません。
 
 ## ビュー
+
+3 通りの描き方があります。既定はポンチ絵ですが、Y 字を目で追えないほど
+ドメインが増えた構造では、鎖ごとに軌道として並べる linear ビューが読めます。
+
+![トリスペシフィック IgG(kih)-scFv の linear ビュー](docs/images/linear.png)
 
 | 関数 | コンポーネント | 内容 |
 | --- | --- | --- |
@@ -300,6 +315,9 @@ IgG4 のヒンジが安定化されていない、DAR が化学的に到達し�
 
 ### 親と変異体の比較
 
+![親の IgG(kih) と CrossMab 変異体を並べ、変化点を強調したもの](docs/images/diff.png)
+
+
 ```ts
 import { renderComparison } from 'antibody-viewer/panel';
 
@@ -312,6 +330,10 @@ const { svg, changes } = renderComparison(parent, variant, { labels: ['親', 'v2
 作り出してしまうためです。
 
 ### 複数分子の図版
+
+このページ冒頭のパネルがこれです。全要素が同じ縮尺で描かれ、パレットは図版全体で
+共有されるので同じ標的は同じ色になり、凡例は全要素の和集合から 1 つだけ作られます。
+
 
 ```ts
 import { renderPanel } from 'antibody-viewer/panel';
@@ -398,6 +420,7 @@ npm install
 npm test          # ユニットテスト + SVG スナップショット + React/文字列の一致検証
 npm run build     # ESM + CJS + 型定義
 npm run playground   # ビルドして examples/playground.html をサーバ経由で開く
+npm run readme-images  # docs/images/ を再生成（PNG 化に Playwright が要る）
 npm run gallery      # ビルドして examples/gallery.html を生成
 npm run adc-demo     # ビルドして examples/adc.html を生成
 npm run panel-demo   # ビルドして examples/panel.html を生成

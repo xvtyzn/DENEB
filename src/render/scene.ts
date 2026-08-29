@@ -3,6 +3,7 @@ import { DOMAIN_CATALOG } from '../model/catalog';
 import { layout as runLayout } from '../layout/skeleton';
 import type { Connector, LayoutResult, PlacedDomain, Point, Rect } from '../layout/types';
 import { rotate } from '../layout/geometry';
+import { pointOn } from '../layout/links';
 import { createColorResolver, type ColorMode } from '../theme/palette';
 import { resolveTheme, type Theme } from '../theme/theme';
 import { curve, domainPath, hingePath, linkerPath } from './glyphs';
@@ -139,6 +140,32 @@ export function buildScene(
     }
     return node.node;
   });
+
+  // A hinge or an scFv linker has no glyph, so anything attached to one would
+  // otherwise be dropped — S228P on an IgG4 hinge, or the interchain cysteines
+  // an ADC is usually conjugated to. Draw those against the connector that
+  // stands in for the domain.
+  for (const connector of result.connectors) {
+    for (const id of connector.skipped ?? []) {
+      const domain = construct.byId.get(id);
+      if (!domain || domain.modifications.length === 0) continue;
+      const node = skippedDomainNode(domain, connector, {
+        theme,
+        showPayloadNames: options.showPayloadNames ?? true,
+        inlineStructures: showStructures === 'inline',
+        centroid,
+        prefix,
+        highlighted,
+      });
+      domainNodes.push(node.node);
+      for (const m of domain.modifications) {
+        const r = resolveModification(m, domain.id);
+        const key = `${r.type}|${r.label}`;
+        if (!usedModifications.has(key)) usedModifications.set(key, r);
+      }
+      reachPoints.push(...node.reach);
+    }
+  }
 
   const bbox = expand(result.bbox, reachPoints, theme.padding);
   const title = options.title ?? construct.name;
@@ -427,6 +454,88 @@ function domainNode(
     ariaLabel: describeDomain(p.domain),
     title: describeDomain(p.domain),
     children,
+    },
+  };
+}
+
+/**
+ * Decorations for a domain the layout gave no glyph, placed on the connector
+ * that replaced it.
+ *
+ * The frame is the one a glyph would have had: centred on the middle of the
+ * connector, with its local "up" along the chain, so a marker or a conjugation
+ * stalk leaves the hinge the same way it leaves any other domain.
+ */
+function skippedDomainNode(
+  domain: NDomain,
+  connector: Connector,
+  ctx: {
+    theme: Theme;
+    showPayloadNames: boolean;
+    inlineStructures: boolean;
+    centroid: Point;
+    prefix: string;
+    highlighted: Set<string>;
+  },
+): { node: SceneNode; reach: Point[] } {
+  const spec = DOMAIN_CATALOG[domain.type];
+  const mid = pointOn(connector.a, connector.b, connector.via, 0.5);
+  const tail = pointOn(connector.a, connector.b, connector.via, 0.35);
+  const head = pointOn(connector.a, connector.b, connector.via, 0.65);
+  const rotation = (Math.atan2(head.y - tail.y, head.x - tail.x) * 180) / Math.PI - 90;
+
+  const frame: PlacedDomain = {
+    domain,
+    center: mid,
+    rotation,
+    width: spec.width,
+    height: spec.height,
+  } as PlacedDomain;
+  // Nothing pairs with a hinge, so "interface" and "surface" both mean the
+  // side away from the body of the molecule.
+  const away = (-sideToward(frame, ctx.centroid)) as 1 | -1;
+
+  const decorations = decorate(domain, {
+    interfaceSign: away,
+    surfaceSign: away,
+    width: spec.width,
+    height: spec.height,
+    rotation,
+    theme: ctx.theme,
+    showPayloadNames: ctx.showPayloadNames,
+    inlineStructures: ctx.inlineStructures,
+  });
+
+  const { minX, minY, maxX, maxY } = decorations.extent;
+  const reach = [
+    { x: minX, y: minY },
+    { x: maxX, y: minY },
+    { x: maxX, y: maxY },
+    { x: minX, y: maxY },
+  ].map((corner) => ({
+    x: mid.x + rotate(corner, rotation).x,
+    y: mid.y + rotate(corner, rotation).y,
+  }));
+
+  const data: Record<string, string> = {
+    'domain-id': domain.id,
+    'chain-id': domain.chainId,
+    'domain-type': domain.type,
+    modifications: decorations.resolved.map((m) => m.type).join(' '),
+  };
+
+  return {
+    reach,
+    node: {
+      kind: 'group',
+      id: `${ctx.prefix}${domain.id.replace(/[^\w:-]/g, '_')}`,
+      className: 'av-domain av-domain-implicit',
+      transform: `translate(${round(mid.x)},${round(mid.y)}) rotate(${round(rotation)})`,
+      data,
+      role: 'img',
+      ariaLabel: describeDomain(domain),
+      title: describeDomain(domain),
+      children: decorations.nodes,
     },
   };
 }

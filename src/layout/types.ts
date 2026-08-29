@@ -40,6 +40,12 @@ export interface Connector {
   via?: Point[];
   domainA?: string;
   domainB?: string;
+  /**
+   * Domains this connector stands in for — a hinge or an scFv linker, which
+   * get no glyph of their own. Anything attached to one is drawn against the
+   * connector instead, so a modification on a hinge is not lost.
+   */
+  skipped?: string[];
 }
 
 export interface LayoutResult {

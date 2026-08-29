@@ -13,6 +13,9 @@ the surface — and everything drawn is collected into a legend.
 The package is deliberately narrow: **it visualises an annotation, it does not
 produce one.** Feed it the output of your own HMM / ML domain caller.
 
+![Six antibody formats drawn from the same palette](docs/images/formats.png)
+
+
 - Zero runtime dependencies; the core is framework-agnostic and renders to a
   plain SVG string, so it also works in Node for SSR, static export and tests.
 - React components (`antibody-viewer/react`) render the *same* scene as real
@@ -151,6 +154,13 @@ That matters when the input is machine-generated and occasionally incomplete.
 
 ## Views
 
+Every molecule can be drawn three ways. The cartoon is the default; the linear
+view lays each chain out as a track, which is the readable one once a construct
+has more domains than an eye can follow around a Y.
+
+![The linear view of a trispecific IgG(kih)-scFv](docs/images/linear.png)
+
+
 | Function | Component | What it draws |
 | --- | --- | --- |
 | `renderSVG` | `<AntibodyViewer>` | the cartoon |
@@ -165,6 +175,9 @@ All three return `{ svg, scene }`; `renderSVG` also returns the `layout`, with
 per-domain coordinates and the diagnostics.
 
 ## Modifications
+
+![An IgG(kih) bispecific with knob-into-hole cut into the CH3 outlines](docs/images/bispecific.png)
+
 
 Each entry is `{ type, label?, residues?, positions?, marker?, color?, payload? }`.
 Labels and default residues come from a catalog, so `{ type: 'lala' }` is enough
@@ -196,6 +209,11 @@ An ADC's warhead is drawn, not merely named. Give a `drug` modification a
 `payload` and the domain grows a stalk — standing for the chemical linker —
 ending in the compound's glyph with its name beside it, while the linker, DAR
 and conjugation site are collected into their own `Conjugation` legend section.
+
+![An interchain-cysteine ADC, with the thiol the linker is bonded to](docs/images/adc.png)
+
+The sulphur the linker actually hangs from is drawn on the bond, and the linker
+itself is a real depiction of the chemistry rather than a cartoon blob.
 
 ```ts
 {
@@ -391,6 +409,9 @@ Severity is adjustable the same way.
 
 ### Comparing a variant with its parent
 
+![A parent IgG(kih) beside a CrossMab variant, with the changes highlighted](docs/images/diff.png)
+
+
 ```ts
 import { diff } from 'antibody-viewer/diff';
 import { renderComparison } from 'antibody-viewer/panel';
@@ -405,6 +426,11 @@ length is reported — guessing an alignment would invent mutations that are not
 there.
 
 ### Figures with several molecules
+
+The panel at the top of this page is one call: every molecule is drawn to the
+same scale, one palette runs across all of them so a target keeps its colour,
+and the legend is built once from the union of what they contain.
+
 
 ```ts
 import { renderPanel } from 'antibody-viewer/panel';
@@ -569,6 +595,7 @@ npm install
 npm test          # unit tests + SVG snapshots + React/string parity
 npm run build     # ESM + CJS + type declarations
 npm run playground   # build, then serve and open examples/playground.html
+npm run readme-images  # rebuild docs/images/ (needs Playwright for the PNGs)
 npm run gallery      # build, then write examples/gallery.html
 npm run adc-demo     # build, then write examples/adc.html
 npm run panel-demo   # build, then write examples/panel.html

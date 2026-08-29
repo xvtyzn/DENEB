@@ -262,6 +262,7 @@ export function chainConnectors(
           domainA: prev.domain.id,
           domainB: placed.domain.id,
         };
+        if (skipped.length > 0) connector.skipped = skipped.map((d) => d.id);
         const span = length(a, b);
         const glyphs = [...byId.values()].filter(
           (d) => DOMAIN_CATALOG[d.domain.type].glyph !== 'linker',

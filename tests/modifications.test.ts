@@ -502,3 +502,51 @@ describe('glyph style', () => {
     }
   });
 });
+
+describe('modifications on a domain with no glyph', () => {
+  // A hinge and an scFv's internal linker are drawn as connectors, not glyphs.
+  // Anything attached to one used to be dropped without a word — which hid
+  // S228P on every IgG4 and made an interchain-cysteine ADC, the commonest
+  // conjugation chemistry there is, render as a bare antibody.
+  const conjugate = () => {
+    const construct = parseDSL('HC: VH(HER2)-CH1-h-CH2-CH3 *2\nLC: VL(HER2)-CL *2');
+    construct.chains[0]!.domains[2]!.modifications = [
+      { type: 'drug', payload: { name: 'MMAE', linker: 'vc-PAB', dar: 4, attachment: 'S' } },
+    ];
+    return construct;
+  };
+
+  it('draws a payload conjugated to the hinge', () => {
+    const svg = renderSVG(conjugate()).svg;
+    expect(svg).toContain('MMAE');
+    expect(svg).toContain('data-domain-type="hinge"');
+  });
+
+  it('draws a hinge mutation, and lists it in the legend', () => {
+    const svg = renderSVG(getPreset('igg4-s228p')).svg;
+    expect(svg).toContain('S228P');
+  });
+
+  it('gives the hinge the same identifiers as any other domain', () => {
+    // The diagram, the sequence view and `highlight` all address domains by id,
+    // so a hinge that only exists as a connector still has to carry one.
+    const svg = renderSVG(conjugate()).svg;
+    const group = /<g id="[^"]*" class="av-domain av-domain-implicit"[^>]*>/.exec(svg);
+    expect(group?.[0]).toContain('data-domain-id="HC:2"');
+    expect(group?.[0]).toContain('data-chain-id="HC"');
+    expect(group?.[0]).toContain('data-modifications="drug"');
+  });
+
+  it('leaves an unmodified hinge as a bare connector', () => {
+    const svg = renderSVG(getPreset('igg1')).svg;
+    expect(svg).not.toContain('av-domain-implicit');
+  });
+
+  it('grows the viewBox to fit what hangs off the hinge', () => {
+    // Without the legend, whose own width would otherwise set the floor.
+    const bare = { showLegend: false } as const;
+    const plain = renderSVG(parseDSL('HC: VH(HER2)-CH1-h-CH2-CH3 *2\nLC: VL(HER2)-CL *2'), bare);
+    const drawn = renderSVG(conjugate(), bare);
+    expect(drawn.scene.width).toBeGreaterThan(plain.scene.width);
+  });
+});

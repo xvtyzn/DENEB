@@ -81,7 +81,8 @@
     "size": "vite build && node scripts/size.mjs",
     "check-exports": "vite build && node scripts/check-exports.mjs",
     "constant-regions": "node scripts/fetch-constant-regions.mjs",
-    "panel-demo": "vite build && node scripts/panel-demo.mjs"
+    "panel-demo": "vite build && node scripts/panel-demo.mjs",
+    "readme-images": "vite build && node scripts/readme-images.mjs"
   },
   "peerDependencies": {
     "react": ">=17",
