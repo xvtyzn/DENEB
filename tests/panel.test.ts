@@ -61,6 +61,31 @@ describe('renderPanel', () => {
     expect((svg.match(/class="dn-legend-swatch"/g) ?? []).length).toBe(2);
   });
 
+  it('keeps distinct conjugate chemistry in the shared legend', () => {
+    const conjugate = (linker: string, dar: number) => ({
+      chains: [
+        {
+          id: 'HC',
+          domains: [
+            {
+              type: 'CH2' as const,
+              modifications: [
+                { type: 'drug' as const, payload: { name: 'MMAE', linker, dar } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const { svg } = renderPanel([
+      { construct: conjugate('vc-PAB', 2) },
+      { construct: conjugate('PEG', 4) },
+    ]);
+    expect(svg).toContain('MMAE · vc-PAB · DAR 2');
+    expect(svg).toContain('MMAE · PEG · DAR 4');
+    expect((svg.match(/class="dn-legend-marker"/g) ?? []).length).toBe(2);
+  });
+
   it('can be told not to draw a legend at all', () => {
     const { svg } = renderPanel([{ construct: first }], { sharedLegend: false });
     expect(svg).not.toContain('dn-legend');

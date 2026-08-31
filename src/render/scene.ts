@@ -7,7 +7,7 @@ import { pointOn } from '../layout/links';
 import { createColorResolver, type ColorMode } from '../theme/palette';
 import { resolveTheme, type Theme } from '../theme/theme';
 import { curve, domainPath, hingePath, linkerPath } from './glyphs';
-import { buildLegend } from './legend';
+import { buildLegend, modificationLegendKey } from './legend';
 import {
   decorate,
   preferredSide,
@@ -153,7 +153,7 @@ export function buildScene(
     });
     for (const m of p.domain.modifications) {
       const r = resolveModification(m, p.domain.id);
-      const key = `${r.type}|${r.label}`;
+      const key = modificationLegendKey(r);
       if (!usedModifications.has(key)) usedModifications.set(key, r);
     }
     const { minX, minY, maxX, maxY } = node.extent;
@@ -184,7 +184,7 @@ export function buildScene(
     domainNodes.push(node.node);
     for (const m of domain.modifications) {
       const r = resolveModification(m, domain.id);
-      const key = `${r.type}|${r.label}`;
+      const key = modificationLegendKey(r);
       if (!usedModifications.has(key)) usedModifications.set(key, r);
     }
     reachPoints.push(...node.reach);

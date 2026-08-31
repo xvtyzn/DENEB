@@ -256,6 +256,8 @@ An ADC's warhead is drawn, not merely named. Give a `drug` modification a
 `payload` and the domain grows a stalk — standing for the chemical linker —
 ending in the compound's glyph with its name beside it, while the linker, DAR
 and conjugation site are collected into their own `Conjugation` legend section.
+Conjugates with the same compound name remain separate when those details or
+their supplied structure depictions differ.
 
 ![An interchain-cysteine ADC, with the thiol the linker is bonded to](images/adc.png)
 
@@ -795,9 +797,9 @@ npm run constant-regions   # refetch the UniProt reference data
 
 `scripts/adc-demo.mjs` shows the whole conjugate path end to end: it turns a
 SMILES string into a depiction with OpenChemLib — a devDependency of this repo,
-never of the library — and hands the result to `payload.structure`. The molecules
-it ships are example stand-ins; swap in your payload's SMILES and the drawings
-follow.
+never of the library — and hands the result to `payload.structure`. Its complete
+linker-payload moieties, including their warheads, are fetched from PubChem by
+CID. Swap in another payload's SMILES and the drawings follow.
 
 `scripts/adc-approved.mjs` writes every marketed antibody conjugate the US
 label database has — sixteen at the time of writing — in the notation, with the

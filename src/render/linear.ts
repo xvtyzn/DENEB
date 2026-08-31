@@ -3,7 +3,7 @@ import { DOMAIN_CATALOG } from '../model/catalog';
 import { normalize } from '../model/normalize';
 import { createColorResolver, type ColorMode } from '../theme/palette';
 import { resolveTheme, type Theme } from '../theme/theme';
-import { buildLegend } from './legend';
+import { buildLegend, modificationLegendKey } from './legend';
 import { payloadPath } from './glyphs';
 import { resolveModification, type ResolvedModification } from './markers';
 import { resolveHighlight } from './scene';
@@ -176,7 +176,7 @@ export function renderLinear(
       // one is known and centred on the domain otherwise.
       d.modifications.forEach((m, i) => {
         const r = resolveModification(m, d.id);
-        const key = `${r.type}|${r.label}`;
+        const key = modificationLegendKey(r);
         if (!usedModifications.has(key)) usedModifications.set(key, r);
         const px =
           m.positions && m.positions.length > 0 && chain.sequence

@@ -2,6 +2,36 @@ import { describe, expect, it } from 'vitest';
 import { normalize, parseDSL, renderLegend, renderLinear, renderSVG } from '../src/index';
 import { getPreset, presetNames } from '../src/presets/index';
 
+function sameNamedConjugates() {
+  return {
+    chains: [
+      {
+        id: 'HC',
+        domains: [
+          {
+            type: 'CH2' as const,
+            modifications: [
+              {
+                type: 'drug' as const,
+                payload: { name: 'MMAE', linker: 'vc-PAB', dar: 2, site: 'site A' },
+              },
+            ],
+          },
+          {
+            type: 'CH3' as const,
+            modifications: [
+              {
+                type: 'drug' as const,
+                payload: { name: 'MMAE', linker: 'PEG', dar: 4, site: 'site B' },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe('renderSVG', () => {
   it.each(presetNames())('%s matches its snapshot', (name) => {
     expect(renderSVG(getPreset(name)).svg).toMatchSnapshot();
@@ -56,6 +86,18 @@ describe('renderSVG', () => {
     // knob, hole and LALA-PG appear once each even though four domains carry them.
     expect((svg.match(/class="dn-legend-marker"/g) ?? []).length).toBe(3);
     expect((svg.match(/class="dn-legend-swatch"/g) ?? []).length).toBe(2);
+  });
+
+  it('keeps same-named conjugates separate when their chemistry differs', () => {
+    for (const svg of [
+      renderSVG(sameNamedConjugates()).svg,
+      renderLinear(sameNamedConjugates()).svg,
+      renderLegend(sameNamedConjugates()).svg,
+    ]) {
+      expect(svg).toContain('MMAE · vc-PAB · DAR 2 · site A');
+      expect(svg).toContain('MMAE · PEG · DAR 4 · site B');
+      expect((svg.match(/class="dn-legend-marker"/g) ?? []).length).toBe(2);
+    }
   });
 
   it('omits the legend and title when asked', () => {

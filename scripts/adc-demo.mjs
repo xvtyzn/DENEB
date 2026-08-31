@@ -126,9 +126,9 @@ const html = `<!doctype html>
   bond from the antibody then lands on the exact atom that carries it — the
   sulfur of a thiosuccinimide, the nitrogen of a lysine amide — and carries
   straight on into the molecule rather than meeting it at an angle.
-  <strong>What is drawn is the linker chemistry; the warhead itself is left
-  off</strong> — replace the SMILES with your own linker-payload and the pictures
-  follow.
+  <strong>Each drawing contains the complete linker-payload moiety</strong>,
+  including the warhead. Replace the PubChem-derived SMILES with another
+  linker-payload and the pictures follow.
 </p>
 <div class="grid">${[...cases, inlineCase].map(card).join('')}</div>
 <pre>// Everything but the drawing is notation.

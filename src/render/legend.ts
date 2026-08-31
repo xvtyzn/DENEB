@@ -230,6 +230,35 @@ export interface LegendSceneOptions {
   showStructures?: boolean;
 }
 
+/** A key that only merges modifications with the same legend meaning. */
+export function modificationLegendKey(modification: ResolvedModification): string {
+  const structure = modification.payload?.structure;
+  const structureKey = structure
+    ? [
+        structure.svg ?? '',
+        structure.href ?? '',
+        structure.viewBox ?? '',
+        structure.width ?? null,
+        structure.height ?? null,
+        structure.caption ?? '',
+        structure.attach ? [structure.attach.x, structure.attach.y] : null,
+        structure.attachFrom ? [structure.attachFrom.x, structure.attachFrom.y] : null,
+        structure.mirror ?? false,
+      ]
+    : null;
+  return JSON.stringify([
+    modification.type,
+    modification.label,
+    // Catalogued engineering pairs such as DuoBody deliberately use one
+    // shared label for their complementary residues. Payload details, on the
+    // other hand, are the chemistry and must remain distinct.
+    modification.payload ? modification.detail : '',
+    modification.marker,
+    modification.color,
+    structureKey,
+  ]);
+}
+
 /** Every distinct modification in the construct, in first-appearance order. */
 export function collectModifications(construct: NormalizedConstruct): ResolvedModification[] {
   const seen = new Map<string, ResolvedModification>();
@@ -237,7 +266,7 @@ export function collectModifications(construct: NormalizedConstruct): ResolvedMo
     for (const domain of chain.domains) {
       for (const m of domain.modifications) {
         const r = resolveModification(m, domain.id);
-        const key = `${r.type}|${r.label}`;
+        const key = modificationLegendKey(r);
         if (!seen.has(key)) seen.set(key, r);
       }
     }

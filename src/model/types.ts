@@ -113,7 +113,7 @@ export interface PayloadStructure {
   href?: string;
   /** Coordinate system of the supplied artwork, e.g. `'0 0 300 200'`. */
   viewBox?: string;
-  /** Drawn size in diagram units. Defaults to 76 x 56. */
+  /** Drawn size in diagram units. Defaults to 96 x 68. */
   width?: number;
   height?: number;
   /** Caption under the drawing. Defaults to the payload's name. */

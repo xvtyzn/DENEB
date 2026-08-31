@@ -3,7 +3,7 @@ import { normalize } from '../model/normalize';
 import type { Construct, NormalizedConstruct, SpecificityDecl } from '../model/types';
 import { resolveTheme, type Theme } from '../theme/theme';
 import { assignSpecificityColors, type ColorMode } from '../theme/palette';
-import { buildLegend, collectModifications } from './legend';
+import { buildLegend, collectModifications, modificationLegendKey } from './legend';
 import { buildScene, type SceneOptions } from './scene';
 import type { Scene, SceneNode } from './scene-types';
 import { toSVGString } from './svg';
@@ -222,7 +222,7 @@ function unionModifications(items: PanelItem[]): ResolvedModification[] {
   for (const item of items) {
     const construct = 'byId' in item.construct ? item.construct : normalize(item.construct);
     for (const m of collectModifications(construct)) {
-      const key = `${m.type}|${m.label}`;
+      const key = modificationLegendKey(m);
       if (!seen.has(key)) seen.set(key, m);
     }
   }
