@@ -134,6 +134,107 @@ describe('diagnostics', () => {
   });
 });
 
+describe('explicit pairing', () => {
+  const codes = (dsl: string) => of(dsl).diagnostics.map((d) => d.code);
+  const partnerOf = (dsl: string, id: string) => {
+    const n = of(dsl);
+    for (const c of n.chains) for (const d of c.domains) if (d.id === id) return d.partner;
+    return undefined;
+  };
+
+  it('lets @pair override what the inference would have done', () => {
+    const dsl = `
+      HC: VH~VH-CH1-h-CH2-CH3
+      LC: VL~VL-CL
+      @pair HC:0 LC:2
+      @pair HC:2 LC:0
+    `;
+    expect(partnerOf(dsl, 'HC:0')).toBe('LC:2');
+    expect(partnerOf(dsl, 'HC:2')).toBe('LC:0');
+  });
+
+  it('carries @pair over to the copies of a repeated chain', () => {
+    // Without this the first arm is crossed as asked and the second falls back
+    // to the positional default, so a symmetric molecule comes out asymmetric.
+    const dsl = `
+      HC: VH~VH-CH1-h-CH2-CH3 *2
+      LC: VL~VL-CL *2
+      @pair HC:0 LC:2
+      @pair HC:2 LC:0
+    `;
+    expect(partnerOf(dsl, 'HC(2):0')).toBe('LC(2):2');
+    expect(partnerOf(dsl, 'HC(2):2')).toBe('LC(2):0');
+  });
+
+  it('says so when a link cannot be carried over', () => {
+    const dsl = `
+      HC: VH(A)-CH1-h-CH2-CH3 *2
+      C3: VH(B)
+      @pair HC:0 C3:0
+    `;
+    expect(codes(dsl)).toContain('link-not-replicated');
+  });
+
+  it('warns when a reference could mean more than one domain', () => {
+    const dsl = `
+      HC: VH(A)~VH(B)-CH1-h-CH2-CH3
+      LC: VL(B)~VL(A)-CL
+      @pair HC:VH LC:VL
+    `;
+    expect(codes(dsl)).toContain('ambiguous-link-ref');
+  });
+
+  it('warns about a pair that does not occur, but still draws it', () => {
+    const dsl = `
+      HC: VH(A)-CH1-h-CH2-CH3
+      LC: VL(A)-CL
+      C3: VH(B)
+      @pair HC:0 C3:0
+    `;
+    expect(codes(dsl)).toContain('implausible-pair');
+    expect(partnerOf(dsl, 'HC:0')).toBe('C3:0');
+  });
+
+  it('leaves an ordinary pairing unremarked', () => {
+    const n = normalize(getPreset('igg-kih'));
+    const noise = n.diagnostics.filter((d) =>
+      ['ambiguous-link-ref', 'implausible-pair', 'link-not-replicated'].includes(d.code),
+    );
+    expect(noise).toEqual([]);
+  });
+});
+
+describe('unpaired domains', () => {
+  it('reports a constant domain left without a partner', () => {
+    const n = of(`
+      HC: VH(A)-CH1-h-CH2-CH3
+      LC: VL(A)-CL
+      C3: VH(B)
+      @pair HC:0 C3:0
+    `);
+    // The pairing walk runs out of step, and CH1 keeps its slot with no CL.
+    expect(n.diagnostics.some((d) => d.code === 'unpaired-constant-domain')).toBe(true);
+  });
+
+  it('says only the first Fc dimer was drawn for a multimer', () => {
+    const n = of(`
+      HC: VH(A)-CH1-h-CH2-CH3-CH4 *4
+      LC: VL(A)-CL *4
+    `);
+    expect(n.diagnostics.some((d) => d.code === 'fc-multimer-not-drawn')).toBe(true);
+  });
+
+  it('keeps quiet about the presets, which all pair up', () => {
+    for (const name of ['igg1', 'igg-kih', 'crossmab-ch1cl', 'codv-ig', 'dvd-ig', 'dart-fc']) {
+      const n = normalize(getPreset(name));
+      expect(
+        n.diagnostics.filter((d) => d.code === 'unpaired-constant-domain'),
+        name,
+      ).toEqual([]);
+    }
+  });
+});
+
 describe('specificity colours', () => {
   it('assigns palette colours in first-appearance order', () => {
     const n = normalize(getPreset('igg-kih'));

@@ -163,6 +163,44 @@ describe('skeleton selection', () => {
   });
 });
 
+describe('pairing contacts', () => {
+  const pairings = (c: Parameters<typeof layout>[0]) =>
+    layout(c).connectors.filter((k) => k.kind === 'pairing');
+
+  it('draws the crossed contacts of a CODV-Ig', () => {
+    // Its partners cannot both sit side by side, so the contact is the only
+    // thing that tells it apart from a DVD-Ig.
+    const drawn = pairings(getPreset('codv-ig'));
+    expect(drawn).toHaveLength(4);
+    const pairs = drawn.map((c) => `${c.domainA}~${c.domainB}`).sort();
+    expect(pairs).toEqual(
+      ['HC(2):0~LC(2):2', 'HC(2):2~LC(2):0', 'HC:0~LC:2', 'HC:2~LC:0'].sort(),
+    );
+  });
+
+  it('leaves a contact undrawn when the two already stand side by side', () => {
+    // Every other preset pairs in line, and a line across each Fv head would be
+    // noise. DVD-Ig is the one to check: same domains as CODV, uncrossed.
+    for (const name of presetNames()) {
+      if (name === 'codv-ig') continue;
+      expect(pairings(getPreset(name)), name).toEqual([]);
+    }
+  });
+
+  it('starts and ends the contact on the glyph edges, not their centres', () => {
+    const [contact] = pairings(getPreset('codv-ig'));
+    const result = layout(getPreset('codv-ig'));
+    for (const [point, id] of [
+      [contact!.a, contact!.domainA!],
+      [contact!.b, contact!.domainB!],
+    ] as const) {
+      const glyph = result.byDomainId.get(id)!;
+      expect(insideGlyph(point, glyph, 0.5)).toBe(true);
+      expect(insideGlyph(point, glyph, -0.5)).toBe(false);
+    }
+  });
+});
+
 describe('Y geometry', () => {
   it('puts the Fab arms above the Fc and on opposite sides', () => {
     const { byDomainId } = layout(getPreset('igg-kih'));

@@ -58,11 +58,12 @@ export function normalize(construct: Construct, options: NormalizeOptions = {}):
   }
 
   const links: Link[] = [...(construct.links ?? [])];
+  replicateLinks(links, chains, byId, diagnostics);
   applyExplicitPairs(links, chains, byId, diagnostics);
   pairIntraChain(chains);
   pairAcrossVariableDomains(chains);
   pairHeavyLight(chains, diagnostics);
-  const dimerLinks = pairFc(chains);
+  const dimerLinks = pairFc(chains, diagnostics);
   links.push(...dimerLinks);
 
   const order: string[] = [];
@@ -300,6 +301,82 @@ export function resolveRef(
   return chain.domains.find((d) => d.type === (key as DomainType));
 }
 
+/**
+ * How many domains a reference could mean. `HC:CH3` is one domain in an IgG and
+ * two in a chain carrying a dual-variable module, and picking the first without
+ * saying so is how a link ends up on the wrong domain.
+ */
+function refMatches(ref: DomainRef, chains: NChain[], byId: Map<string, NDomain>): number {
+  if (byId.has(ref)) return 1;
+  const sep = ref.lastIndexOf(':');
+  if (sep < 0) return 0;
+  const chain = chains.find((c) => c.id === ref.slice(0, sep));
+  if (!chain) return 0;
+  const key = ref.slice(sep + 1);
+  const asIndex = Number(key);
+  if (Number.isInteger(asIndex)) return chain.domains[asIndex] ? 1 : 0;
+  return chain.domains.filter((d) => d.type === (key as DomainType)).length;
+}
+
+/**
+ * A link written against a chain that was then repeated has to be repeated too.
+ *
+ * `@pair HC:0 LC:2` on a `*2` construct otherwise binds the first copy the way
+ * the author asked and leaves the second to the inference, so a molecule
+ * written symmetrically comes out with two different arms -- which is exactly
+ * the case a crossed dual-variable format needs the directive for.
+ */
+function replicateLinks(
+  links: Link[],
+  chains: NChain[],
+  byId: Map<string, NDomain>,
+  diagnostics: Diagnostic[],
+): void {
+  const clones = new Map<string, NChain[]>();
+  for (const c of chains) {
+    if (!c.cloneOf) continue;
+    const list = clones.get(c.cloneOf) ?? [];
+    list.push(c);
+    clones.set(c.cloneOf, list);
+  }
+  if (clones.size === 0) return;
+
+  for (const link of [...links]) {
+    const a = resolveRef(link.a, chains, byId);
+    const b = resolveRef(link.b, chains, byId);
+    if (!a || !b) continue;
+    const ca = clones.get(a.chainId);
+    const cb = clones.get(b.chainId);
+    if (!ca && !cb) continue;
+    // Within one repeated chain the link simply happens once per copy; between
+    // two repeated chains the copies pair off in order. One repeated and one
+    // not has no answer -- the single chain cannot be in two places -- so it is
+    // reported rather than guessed at.
+    const pairs: Array<[NChain, NChain]> =
+      a.chainId === b.chainId
+        ? (ca ?? []).map((c) => [c, c])
+        : ca && cb && ca.length === cb.length
+          ? ca.map((c, i) => [c, cb[i]!])
+          : [];
+    if (pairs.length === 0) {
+      diagnostics.push({
+        level: 'warning',
+        code: 'link-not-replicated',
+        message:
+          `Link ${link.a} <-> ${link.b} could not be carried over to the repeated ` +
+          `copies of its chains; only the first copy is linked.`,
+      });
+      continue;
+    }
+    for (const [ch, cl] of pairs) {
+      const da = ch.domains[a.index];
+      const db = cl.domains[b.index];
+      if (!da || !db) continue;
+      links.push({ ...link, a: da.id, b: db.id });
+    }
+  }
+}
+
 function applyExplicitPairs(
   links: Link[],
   chains: NChain[],
@@ -317,6 +394,25 @@ function applyExplicitPairs(
         message: `Link ${l.a} <-> ${l.b} could not be resolved.`,
       });
       continue;
+    }
+    for (const ref of [l.a, l.b]) {
+      if (refMatches(ref, chains, byId) > 1) {
+        diagnostics.push({
+          level: 'warning',
+          code: 'ambiguous-link-ref',
+          message:
+            `Reference "${ref}" matches more than one domain; the first was used. ` +
+            `Use an index, as in "${ref.slice(0, ref.lastIndexOf(':') + 1)}0".`,
+        });
+      }
+    }
+    if (!canPair(a.type, b.type)) {
+      diagnostics.push({
+        level: 'warning',
+        code: 'implausible-pair',
+        message: `${a.type} ${a.id} and ${b.type} ${b.id} do not normally pair; drawn as asked.`,
+        ref: a.id,
+      });
     }
     link(a, b);
   }
@@ -427,9 +523,21 @@ function pairHeavyLight(chains: NChain[], diagnostics: Diagnostic[]): void {
 }
 
 /** CH2/CH3/CH4 of the first two heavy chains dimerize. */
-function pairFc(chains: NChain[]): Link[] {
+function pairFc(chains: NChain[], diagnostics: Diagnostic[]): Link[] {
   const fcChains = chains.filter((c) => c.domains.some((d) => FC_TYPES.has(d.type)));
   const links: Link[] = [];
+  if (fcChains.length > 2) {
+    // An IgM or IgA multimer is held together by a J chain and by contacts this
+    // model has no vocabulary for, so only the first dimer is drawn. Saying so
+    // is better than leaving the reader to notice the missing contacts.
+    diagnostics.push({
+      level: 'warning',
+      code: 'fc-multimer-not-drawn',
+      message:
+        `${fcChains.length} chains carry an Fc; only the first two were dimerized. ` +
+        `Multimeric assemblies (IgM, IgA) are not modelled.`,
+    });
+  }
   if (fcChains.length < 2) return links;
   const [a, b] = [fcChains[0]!, fcChains[1]!];
   for (const type of ['CH2', 'CH3', 'CH4'] as DomainType[]) {
@@ -457,7 +565,17 @@ function reportUnpaired(chains: NChain[], diagnostics: Diagnostic[]): void {
           message: `${d.type} ${d.id} has no partner; drawn as a single domain.`,
           ref: d.id,
         });
+        continue;
       }
+      // A lone constant domain is rarer and less likely to be deliberate: a
+      // CH1 with no CL means the pairing walk ran out of step somewhere, and
+      // saying nothing is how that reaches the picture unnoticed.
+      diagnostics.push({
+        level: 'info',
+        code: 'unpaired-constant-domain',
+        message: `${d.type} ${d.id} has no partner; drawn as a single domain.`,
+        ref: d.id,
+      });
     }
   }
 }

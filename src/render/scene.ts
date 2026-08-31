@@ -559,6 +559,15 @@ function connectorNode(c: Connector, theme: Theme): SceneNode {
   switch (c.kind) {
     case 'disulfide':
       return { ...base, stroke: theme.disulfide, strokeWidth: 1.2 };
+    case 'pairing':
+      // A contact, not a covalent bond, so it is drawn broken -- and thinner
+      // than the disulfide it would otherwise be mistaken for.
+      return {
+        ...base,
+        stroke: theme.outline,
+        strokeWidth: 0.9,
+        strokeDasharray: '2 1.7',
+      };
     case 'linker':
       return { ...base, stroke: theme.backbone, strokeWidth: theme.backboneWidth - 0.4 };
     case 'hinge':

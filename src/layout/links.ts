@@ -299,21 +299,79 @@ export function structuralConnectors(
 ): Connector[] {
   const out: Connector[] = [];
   for (const link of links) {
-    if (link.type === 'linker') continue;
+    // Pairing is drawn from the partner graph instead, which every route into
+    // the model feeds -- an explicit `pair` link sets `partner` too, so reading
+    // both here would draw the same contact twice.
+    if (link.type !== 'disulfide') continue;
     const da = resolve(link.a);
     const db = resolve(link.b);
     if (!da || !db) continue;
     const pa = byId.get(da.id);
     const pb = byId.get(db.id);
     if (!pa || !pb) continue;
-    if (link.type === 'dimer') continue; // dimer partners already sit adjacent
     out.push({
-      kind: link.type === 'disulfide' ? 'disulfide' : 'pairing',
+      kind: 'disulfide',
       a: pa.center,
       b: pb.center,
       domainA: da.id,
       domainB: db.id,
     });
+  }
+  return out;
+}
+
+/** Are these two glyphs drawn as one head -- level, and about a lane apart? */
+function drawnAsPair(a: PlacedDomain, b: PlacedDomain): boolean {
+  if (Math.abs(a.rotation - b.rotation) > 1) return false;
+  const local = rotate({ x: b.center.x - a.center.x, y: b.center.y - a.center.y }, -a.rotation);
+  return Math.abs(local.y) < a.height * 0.35 && Math.abs(local.x) < a.width + b.width;
+}
+
+/** Where the line from `p`'s centre towards `to` leaves `p`'s glyph. */
+function edgePoint(p: PlacedDomain, to: Point): Point {
+  const local = rotate({ x: to.x - p.center.x, y: to.y - p.center.y }, -p.rotation);
+  const limits = [
+    Math.abs(local.x) > 1e-6 ? p.width / 2 / Math.abs(local.x) : Infinity,
+    Math.abs(local.y) > 1e-6 ? p.height / 2 / Math.abs(local.y) : Infinity,
+  ];
+  const k = Math.min(...limits);
+  if (!Number.isFinite(k)) return p.center;
+  return add(p.center, rotate({ x: local.x * k, y: local.y * k }, p.rotation));
+}
+
+/**
+ * Contacts between partners the layout could not put side by side.
+ *
+ * Domains that pair normally share a slot and stand shoulder to shoulder, and
+ * their position alone says so. A crossed format cannot have that both ways at
+ * once: CODV-Ig runs VH-A/VH-B down the heavy chain against VL-B/VL-A down the
+ * light chain, so whichever way round the ladder is built its partners end up
+ * diagonal. Drawing the contact is then the only thing separating it from a
+ * DVD-Ig, whose pairs really are in line.
+ */
+export function pairingConnectors(
+  chains: NChain[],
+  byId: Map<string, PlacedDomain>,
+): Connector[] {
+  const out: Connector[] = [];
+  const seen = new Set<string>();
+  for (const chain of chains) {
+    for (const domain of chain.domains) {
+      if (!domain.partner) continue;
+      const key = [domain.id, domain.partner].sort().join('\u0000');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const a = byId.get(domain.id);
+      const b = byId.get(domain.partner);
+      if (!a || !b || drawnAsPair(a, b)) continue;
+      out.push({
+        kind: 'pairing',
+        a: edgePoint(a, b.center),
+        b: edgePoint(b, a.center),
+        domainA: a.domain.id,
+        domainB: b.domain.id,
+      });
+    }
   }
   return out;
 }

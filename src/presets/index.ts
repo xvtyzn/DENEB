@@ -216,6 +216,10 @@ export const PRESET_SOURCES = {
     @name CODV-Ig (cross-over dual variable)
     HC: VH(TNF)~VH(IL17)-CH1-h-CH2-CH3 *2
     LC: VL(IL17)~VL(TNF)-CL *2
+    # The cross-over is the whole format, so it is stated rather than left to
+    # be inferred from the target names.
+    @pair HC:0 LC:2
+    @pair HC:2 LC:0
   `,
   'igg-hc-scfv': `
     @name IgG-HC-scFv (2+2)

@@ -3,7 +3,12 @@ import { normalize, resolveRef } from '../model/normalize';
 import { DOMAIN_CATALOG } from '../model/catalog';
 import { resolveTheme, type Theme } from '../theme/theme';
 import { boundsOf, cornersOf } from './geometry';
-import { chainConnectors, hingeDisulfides, structuralConnectors } from './links';
+import {
+  chainConnectors,
+  hingeDisulfides,
+  pairingConnectors,
+  structuralConnectors,
+} from './links';
 import {
   armChains,
   lightChainsFor,
@@ -45,6 +50,7 @@ export function layout(
       resolveRef(ref, construct.chains, construct.byId),
     ),
   );
+  connectors.push(...pairingConnectors(construct.chains, byDomainId));
 
   const points: Point[] = [];
   for (const p of placed) points.push(...cornersOf(p.center, p.width, p.height, p.rotation));

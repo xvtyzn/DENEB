@@ -133,8 +133,37 @@ with its own name, so novel building blocks still show up.
 Directives: `@name`, `@color TARGET=#rrggbb`, `@skeleton y|row`, `@arm <degrees>`,
 `@armmode splayed|crossed`, `@pair A:0 B:2`, `@ss A:2 B:0`.
 
-`@pair` matters when the automatic inference cannot know the answer — a TandAb's
-four cross-chain Fv pairs, for instance.
+### Saying which domains pair
+
+Four rules infer pairing (see below), and they get every ordinary format right.
+`@pair` is for the ones they cannot know: a TandAb's four cross-chain Fv pairs,
+or a CODV-Ig, whose crossover is the whole point of the format and would
+otherwise be read off the target names alone.
+
+```
+HC: VH(TNF)~VH(IL17)-CH1-h-CH2-CH3 *2
+LC: VL(IL17)~VL(TNF)-CL *2
+@pair HC:0 LC:2      # TNF binds across the crossover
+@pair HC:2 LC:0      # and so does IL17
+```
+
+A domain is referred to in one of three ways:
+
+| Reference | Means |
+| --- | --- |
+| `HC:0` | the chain's first domain, counting linkers and hinges |
+| `HC:CH3` | the chain's CH3 — only when the chain has exactly one |
+| a domain's own `id` | when the input is JSON and set one |
+
+`HC:CH3` is reported as `ambiguous-link-ref` when the chain holds more than one
+of that type, and the first is used; write the index instead. A link on a chain
+written with `*n` is carried over to every copy, so a symmetric molecule stays
+symmetric. `@pair` is honoured even for a combination that does not occur in
+nature — you get an `implausible-pair` warning and the drawing you asked for.
+
+Partners that the layout cannot place side by side — the crossed pairs above —
+are joined by a dashed contact line. Partners that do stand side by side say so
+by their position, and get no line.
 
 ## What gets inferred
 
@@ -150,7 +179,14 @@ That matters when the input is machine-generated and occasionally incomplete.
   linker, *and* agreeing on target, which is what stops a diabody being read as
   an scFv), then cross-chain pairs matched by target, then heavy/light matched
   positionally — position, not domain type, so CrossMab swaps survive. Finally
-  CH2/CH3/CH4 dimerise between the first two heavy chains.
+  CH2/CH3/CH4 dimerise between the first two heavy chains. Note the third rule:
+  drop the target names from a CODV-Ig and it becomes a DVD-Ig, because nothing
+  is left to cross on. `@pair` states it outright.
+- **What is left over.** A variable or constant domain that ends up with no
+  partner is reported (`unpaired-variable-domain`, `unpaired-constant-domain`) —
+  correct for a VHH, and usually a mistake for a CH1. More than two chains
+  carrying an Fc give `fc-multimer-not-drawn`: only the first dimer is drawn,
+  because an IgM or IgA multimer needs a J chain this model has no word for.
 - **Copies.** `copies: 2` (or `*2`) materialises real chains, and a lone light
   chain shared by several heavy chains (common-LC designs) is cloned so every
   arm has one.
