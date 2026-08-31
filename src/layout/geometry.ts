@@ -60,3 +60,30 @@ export function cornersOf(center: Point, width: number, height: number, rotation
     { x: -hw, y: hh },
   ].map((p) => add(center, rotate(p, rotation)));
 }
+
+/** Axes to test two convex polygons against, for a separating-axis check. */
+function edgeNormals(corners: Point[]): Point[] {
+  const out: Point[] = [];
+  for (let i = 0; i < corners.length; i++) {
+    const a = corners[i]!;
+    const b = corners[(i + 1) % corners.length]!;
+    out.push({ x: -(b.y - a.y), y: b.x - a.x });
+  }
+  return out;
+}
+
+function project(corners: Point[], axis: Point): [number, number] {
+  const values = corners.map((c) => c.x * axis.x + c.y * axis.y);
+  return [Math.min(...values), Math.max(...values)];
+}
+
+/** Do two convex polygons, given as corner lists, share any area? */
+export function polygonsOverlap(a: Point[], b: Point[]): boolean {
+  if (a.length === 0 || b.length === 0) return false;
+  for (const axis of [...edgeNormals(a), ...edgeNormals(b)]) {
+    const [aMin, aMax] = project(a, axis);
+    const [bMin, bMax] = project(b, axis);
+    if (aMax <= bMin || bMax <= aMin) return false;
+  }
+  return true;
+}

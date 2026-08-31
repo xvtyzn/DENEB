@@ -2,7 +2,7 @@ import type { Construct, NDomain, NormalizedConstruct, Payload } from '../model/
 import { DOMAIN_CATALOG } from '../model/catalog';
 import { layout as runLayout } from '../layout/skeleton';
 import type { Connector, LayoutResult, PlacedDomain, Point, Rect } from '../layout/types';
-import { rotate } from '../layout/geometry';
+import { cornersOf, polygonsOverlap, rotate } from '../layout/geometry';
 import { pointOn } from '../layout/links';
 import { createColorResolver, type ColorMode } from '../theme/palette';
 import { resolveTheme, type Theme } from '../theme/theme';
@@ -91,12 +91,18 @@ export function buildScene(
   const centroid = centerOf(result.domains);
   const prefix = options.idPrefix ? `${options.idPrefix}-` : '';
 
+  // Outlines of everything already on the page, so a conjugate's drawing can be
+  // set far enough out to stay off them.
+  const glyphs: GlyphOutline[] = result.domains.map((p) => ({
+    id: p.domain.id,
+    corners: cornersOf(p.center, p.width, p.height, p.rotation),
+  }));
+
   const usedModifications = new Map<string, ResolvedModification>();
   const reachPoints: Point[] = [];
   const surfaceSigns = new Map<string, 1 | -1>();
   for (const p of result.domains) {
-    const partner = p.domain.partner ? result.byDomainId.get(p.domain.partner) : undefined;
-    surfaceSigns.set(p.domain.id, (-sideToward(p, partner?.center ?? centroid)) as 1 | -1);
+    surfaceSigns.set(p.domain.id, (-sideToward(p, centroid)) as 1 | -1);
   }
   // A hinge or an scFv linker has no glyph, so anything attached to one is
   // drawn against the connector that stands in for it. Those frames are built
@@ -143,6 +149,7 @@ export function buildScene(
       centroid,
       byDomainId: result.byDomainId,
       prefix,
+      glyphs,
     });
     for (const m of p.domain.modifications) {
       const r = resolveModification(m, p.domain.id);
@@ -172,6 +179,7 @@ export function buildScene(
       centroid,
       prefix,
       highlighted,
+      glyphs,
     });
     domainNodes.push(node.node);
     for (const m of domain.modifications) {
@@ -274,6 +282,13 @@ interface DomainContext {
   centroid: Point;
   byDomainId: Map<string, PlacedDomain>;
   prefix: string;
+  /** Every glyph on the page, for keeping a drawing clear of them. */
+  glyphs: GlyphOutline[];
+}
+
+interface GlyphOutline {
+  id: string;
+  corners: Point[];
 }
 
 /**
@@ -336,6 +351,20 @@ function expand(bbox: Rect, points: Point[], padding: number): Rect {
   return { x, y, width: right - x, height: bottom - y };
 }
 
+/**
+ * Keep a conjugate's drawing off the protein.
+ *
+ * A compound is a good deal bigger than the domain it hangs from, so leaving
+ * from the right edge is not on its own enough — on a tilted Fab arm the drawing
+ * can still lie back across the molecule. The bond that carries it is what
+ * gives way: it is drawn longer until the drawing is in the clear, the way a
+ * conjugation scheme sets the compound out to one side.
+ */
+function clearanceTest(glyphs: GlyphOutline[], own: string): (corners: Point[]) => boolean {
+  return (corners) =>
+    !glyphs.some((g) => g.id !== own && polygonsOverlap(corners, g.corners));
+}
+
 function domainNode(
   p: PlacedDomain,
   ctx: DomainContext,
@@ -357,6 +386,8 @@ function domainNode(
     theme,
     showPayloadNames: ctx.showPayloadNames,
     inlineStructures: ctx.showStructures === 'inline' && ctx.inlineAt.has(p.domain.id),
+    center: p.center,
+    clears: clearanceTest(ctx.glyphs, p.domain.id),
   });
   const fill = colors.fill(p.domain);
   const children: SceneNode[] = [];
@@ -512,6 +543,7 @@ function skippedDomainNode(
     centroid: Point;
     prefix: string;
     highlighted: Set<string>;
+    glyphs: GlyphOutline[];
   },
 ): { node: SceneNode; reach: Point[] } {
   const spec = DOMAIN_CATALOG[domain.type];
@@ -530,6 +562,8 @@ function skippedDomainNode(
     theme: ctx.theme,
     showPayloadNames: ctx.showPayloadNames,
     inlineStructures: ctx.inlineStructures,
+    center: mid,
+    clears: clearanceTest(ctx.glyphs, domain.id),
   });
 
   const { minX, minY, maxX, maxY } = decorations.extent;

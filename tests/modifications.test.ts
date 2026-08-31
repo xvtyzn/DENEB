@@ -3,6 +3,8 @@ import { layout, normalize, parseDSL, renderSVG, resolveModification } from '../
 import { DOMAIN_CATALOG, MODIFICATION_CATALOG } from '../src/model/catalog';
 import { getPreset } from '../src/presets/index';
 import type { ModificationType, PayloadStructure } from '../src/model/types';
+import { cornersOf, polygonsOverlap, rotate } from '../src/layout/geometry';
+import type { LayoutResult, Point } from '../src/layout/types';
 
 describe('conjugated payloads', () => {
   it('parses the compound, linker, DAR, copy count and site from the DSL', () => {
@@ -127,6 +129,62 @@ describe('payload structures', () => {
     ],
   });
 
+  /** A drawing whose open bond points out to the right, at a given size. */
+  const drawing = (width: number, height: number): PayloadStructure => ({
+    svg: '<circle cx="50" cy="30" r="28"/>',
+    viewBox: '0 0 100 60',
+    width,
+    height,
+    attach: { x: 96, y: 30 },
+    attachFrom: { x: 60, y: 30 },
+  });
+
+  /** An IgG with a drawing conjugated to one domain type. */
+  const renderConjugate = (type: 'CH1' | 'CH3', s: PayloadStructure) => {
+    const construct = parseDSL('HC: VH(A)-CH1-h-CH2-CH3 *2\nLC: VL(A)-CL *2');
+    for (const chain of construct.chains) {
+      for (const d of chain.domains) {
+        if (d.type !== type) continue;
+        d.modifications = [
+          { type: 'drug', payload: { name: 'X', attachment: '', structure: s } },
+        ];
+      }
+    }
+    return renderSVG(construct, { showStructures: 'inline' });
+  };
+
+  /** Length of the longest bond drawn off a conjugation site. */
+  const bondLength = (svg: string): number =>
+    Math.max(
+      0,
+      ...[
+        ...svg.matchAll(
+          /<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"[^>]*class="dn-marker"/g,
+        ),
+      ].map((m) => Math.hypot(Number(m[3]) - Number(m[1]), Number(m[4]) - Number(m[2]))),
+    );
+
+  /** The drawing's box, in world coordinates. */
+  const structureCorners = (svg: string, result: LayoutResult): Point[] => {
+    const site = result.domains.find((p) => p.domain.modifications.length > 0)!;
+    const panel =
+      /class="dn-payload-structure" transform="translate\(([-\d.]+),([-\d.]+)\)/.exec(svg)!;
+    const local = { x: Number(panel[1]), y: Number(panel[2]) };
+    const turned = rotate(local, site.rotation);
+    const tip = { x: site.center.x + turned.x, y: site.center.y + turned.y };
+    const embed =
+      /<svg x="([-\d.]+)" y="([-\d.]+)" width="([-\d.]+)" height="([-\d.]+)"[^>]*class="dn-structure"/.exec(
+        svg,
+      )!;
+    const [bx, by, bw, bh] = embed.slice(1).map(Number) as [number, number, number, number];
+    return [
+      { x: tip.x + bx, y: tip.y + by },
+      { x: tip.x + bx + bw, y: tip.y + by },
+      { x: tip.x + bx + bw, y: tip.y + by + bh },
+      { x: tip.x + bx, y: tip.y + by + bh },
+    ];
+  };
+
   it('draws a captioned thumbnail in the legend by default', () => {
     const { svg } = renderSVG(construct);
     expect(svg).toContain('Structures');
@@ -197,6 +255,67 @@ describe('payload structures', () => {
     };
     const { svg } = renderSVG(withStructure(both), { showStructures: 'inline' });
     expect(svg).not.toContain('dn-structure-mirror');
+  });
+
+  it('hangs a surface mark off the side away from the body of the molecule', () => {
+    // Not "away from the pairing partner": a CH1's partner is its CL, which is
+    // the outboard half of the arm, so that rule pointed the mark into the
+    // crook of the Y — the least solvent-exposed direction there is. Only one
+    // arm carries the drug, so there is no doubt which site the panel belongs
+    // to.
+    const construct = parseDSL(`
+      HC1: VH(A)-CH1-h-CH2-CH3[knob]
+      LC1: VL(A)-CL
+      HC2: VH(B)-CH1-h-CH2-CH3[hole]
+      LC2: VL(B)-CL
+    `);
+    construct.chains[0]!.domains[1]!.modifications = [
+      { type: 'drug', payload: { name: 'X', attachment: '', structure: drawing(40, 24) } },
+    ];
+    const { svg, layout: result } = renderSVG(construct, { showStructures: 'inline' });
+    const site = result.byDomainId.get('HC1:1')!;
+    const panel =
+      /class="dn-payload-structure" transform="translate\(([-\d.]+),([-\d.]+)\)/.exec(svg)!;
+    const out = rotate({ x: Number(panel[1]), y: Number(panel[2]) }, site.rotation);
+    // HC1 is the left arm, so away from the body is further left.
+    expect(site.center.x).toBeLessThan(0);
+    expect(out.x).toBeLessThan(0);
+  });
+
+  it('reaches further out when the drawing would otherwise lie on the molecule', () => {
+    // A compound is bigger than the domain it hangs off, so on a Fab arm it can
+    // still lie back across the antibody even leaving from the outer edge. The
+    // bond is what gives way.
+    const big = drawing(170, 102);
+    const crowded = bondLength(renderConjugate('CH1', big).svg);
+    const open = bondLength(renderConjugate('CH3', big).svg);
+    expect(crowded).toBeGreaterThan(open);
+  });
+
+  it('leaves the bond short where the drawing already has room', () => {
+    // A small drawing below the Fc has nothing in its way.
+    expect(bondLength(renderConjugate('CH3', drawing(60, 36)).svg)).toBeCloseTo(14, 0);
+  });
+
+  it('draws the bond the whole way to what it carries', () => {
+    // Both are in the glyph's own frame, so they compare directly: the line has
+    // to end where the drawing starts, or a long reach leaves a floating
+    // compound with nothing joining it to the protein.
+    const { svg } = renderConjugate('CH1', drawing(170, 102));
+    const line = /<line x1="([-\d.]+)" y1="[-\d.]+" x2="([-\d.]+)"[^>]*class="dn-marker"/.exec(svg);
+    const panel = /class="dn-payload-structure"[^>]*transform="translate\(([-\d.]+),/.exec(svg);
+    expect(line).not.toBeNull();
+    expect(panel).not.toBeNull();
+    expect(Number(line![2])).toBeCloseTo(Number(panel![1]), 1);
+  });
+
+  it('keeps the drawing clear of every glyph', () => {
+    const { svg, layout: result } = renderConjugate('CH1', drawing(170, 102));
+    const box = structureCorners(svg, result);
+    for (const p of result.domains) {
+      const glyph = cornersOf(p.center, p.width, p.height, p.rotation);
+      expect(polygonsOverlap(box, glyph), `${p.domain.id} is under the drawing`).toBe(false);
+    }
   });
 
   it('can be turned off entirely', () => {

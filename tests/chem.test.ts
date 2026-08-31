@@ -61,9 +61,11 @@ describe('structureFromMolecule', () => {
     expect(() => structureFromMolecule(molecule(), { attachAtom: 99 })).toThrow(DepictionError);
   });
 
-  it('carries the caption and the drawn width through', () => {
-    const s = structureFromMolecule(molecule(), { caption: 'SMCC', width: 90 });
+  it('carries the caption through, and fits the drawing to the size asked for', () => {
+    const s = structureFromMolecule(molecule(), { caption: 'SMCC', size: 90 });
     expect(s.caption).toBe('SMCC');
-    expect(s.width).toBe(90);
+    // The longest side is the one that is set: a tall compound must not come
+    // out taller than the antibody it hangs off.
+    expect(Math.max(s.width!, s.height!)).toBe(90);
   });
 });

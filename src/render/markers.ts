@@ -1,6 +1,8 @@
 import type { MarkerShape, Modification, NDomain, Payload } from '../model/types';
 import { MODIFICATION_CATALOG } from '../model/catalog';
 import type { Theme } from '../theme/theme';
+import type { Point, Rect } from '../layout/types';
+import { add, rotate } from '../layout/geometry';
 import type { SceneNode } from './scene-types';
 import {
   domainPath,
@@ -141,6 +143,85 @@ export interface DecorateContext {
   showPayloadNames: boolean;
   /** Put the structure depiction at the end of the stalk instead of the glyph. */
   inlineStructures: boolean;
+  /** Centre of the glyph in world coordinates. Needed for clearance tests. */
+  center?: Point;
+  /**
+   * Does a box, given by its world-space corners, stay clear of the rest of the
+   * molecule? Supplied by the scene, which is the only thing that knows what
+   * else is on the page.
+   */
+  clears?: (corners: Point[]) => boolean;
+}
+
+/** How much further the stalk of an inline structure will reach to get clear. */
+const STALK_STEPS = [0, 12, 26, 44, 68];
+
+/** Stalk length before any reaching: the bond, the atom label, the run-in. */
+function baseStalk(label: string): number {
+  return 7 + (label ? 9 : 0) + 7;
+}
+
+/**
+ * Where the drawing sits relative to the point the bond ends at, and which way
+ * round it goes. Shared by the clearance search and the drawing itself, so the
+ * two cannot disagree about what is on the page.
+ */
+function structureBox(
+  structure: NonNullable<Payload['structure']>,
+  boxWidth: number,
+  boxHeight: number,
+  extendRight: boolean,
+): { x: number; y: number; turn: number; mirror: boolean; box: Rect } {
+  const attach = attachFraction(structure, extendRight);
+  // Naming the neighbouring atom says which way the molecule runs, so the
+  // drawing can be turned to line up with the bond. That supersedes the flip,
+  // which only ever guessed at the same thing and inverted stereochemistry to
+  // get there.
+  const turn = structureTurn(structure, boxWidth, boxHeight, extendRight);
+  const mirror =
+    turn === 0 &&
+    (structure.mirror ?? false) &&
+    (extendRight ? attach.x > 0.5 : attach.x < 0.5);
+  const x = -(mirror ? 1 - attach.x : attach.x) * boxWidth;
+  const y = -attach.y * boxHeight;
+  return { x, y, turn, mirror, box: turnedBox(x, y, boxWidth, boxHeight, turn) };
+}
+
+/**
+ * How far the stalk has to reach before the drawing clears the molecule.
+ *
+ * A compound is a good deal bigger than the domain it hangs off, so even
+ * leaving from the solvent-facing edge it can lie back across an arm. Rather
+ * than shrink it or move it somewhere it does not belong, the bond is drawn
+ * longer — which is what a conjugation scheme does anyway — until the drawing
+ * is out in the clear.
+ */
+function stalkReach(
+  structure: NonNullable<Payload['structure']>,
+  payload: Payload | undefined,
+  ctx: DecorateContext,
+): number {
+  if (!ctx.clears || !ctx.center) return 0;
+  const boxWidth = structure.width ?? STRUCTURE_SIZE.width;
+  const boxHeight = structure.height ?? STRUCTURE_SIZE.height;
+  const dir = ctx.surfaceSign;
+  const base = baseStalk(attachmentLabel(payload, true));
+  const extendRight = dirWorldX(dir, ctx.rotation) >= 0;
+  const { box } = structureBox(structure, boxWidth, boxHeight, extendRight);
+  for (const extra of STALK_STEPS) {
+    const tip = add(
+      ctx.center,
+      rotate({ x: dir * (ctx.width / 2 + base + extra), y: 0 }, ctx.rotation),
+    );
+    const corners = [
+      { x: tip.x + box.x, y: tip.y + box.y },
+      { x: tip.x + box.x + box.width, y: tip.y + box.y },
+      { x: tip.x + box.x + box.width, y: tip.y + box.y + box.height },
+      { x: tip.x + box.x, y: tip.y + box.y + box.height },
+    ];
+    if (ctx.clears(corners)) return extra;
+  }
+  return STALK_STEPS[STALK_STEPS.length - 1]!;
 }
 
 export interface DomainDecorations {
@@ -170,6 +251,14 @@ export interface DomainDecorations {
  */
 export function decorate(domain: NDomain, ctx: DecorateContext): DomainDecorations {
   const resolved = domain.modifications.map((m) => resolveModification(m, domain.id));
+  // Worked out once and shared: the room the drawing needs and where it ends up
+  // have to be the same number, or the picture is cropped through its own
+  // chemistry.
+  const reach = new Map<ResolvedModification, number>();
+  for (const r of resolved) {
+    const structure = ctx.inlineStructures ? r.payload?.structure : undefined;
+    if (structure) reach.set(r, stalkReach(structure, r.payload, ctx));
+  }
   const nodes: SceneNode[] = [];
   let feature: EdgeFeature | undefined;
 
@@ -184,15 +273,17 @@ export function decorate(domain: NDomain, ctx: DecorateContext): DomainDecoratio
     ctx,
     'interface',
     nodes,
+    reach,
   );
   stack(
     resolved.filter((r) => shaped(r) && r.side === 'surface'),
     ctx,
     'surface',
     nodes,
+    reach,
   );
 
-  const out: DomainDecorations = { nodes, resolved, extent: extentOf(resolved, ctx) };
+  const out: DomainDecorations = { nodes, resolved, extent: extentOf(resolved, ctx, reach) };
   if (feature) out.feature = feature;
   return out;
 }
@@ -206,6 +297,7 @@ export function decorate(domain: NDomain, ctx: DecorateContext): DomainDecoratio
 function extentOf(
   resolved: ResolvedModification[],
   ctx: DecorateContext,
+  reach: Map<ResolvedModification, number>,
 ): { minX: number; minY: number; maxX: number; maxY: number } {
   const box = {
     minX: -ctx.width / 2,
@@ -232,7 +324,7 @@ function extentOf(
       // The bond, the attachment atom, the drawing, its brackets and the
       // "n = DAR" that follows them all have to fit.
       const span = Math.max(w, h);
-      grow(dir, 34 + span, span / 2 + (ctx.showPayloadNames ? 22 : 12));
+      grow(dir, 34 + span + (reach.get(r) ?? 0), span / 2 + (ctx.showPayloadNames ? 22 : 12));
     } else if (r.marker === 'drug') {
       const name = ctx.showPayloadNames ? (r.payload?.name.length ?? 0) * 5 + 6 : 0;
       grow(dir, 24 + name, 10);
@@ -249,6 +341,7 @@ function stack(
   ctx: DecorateContext,
   side: 'interface' | 'surface',
   nodes: SceneNode[],
+  reach: Map<ResolvedModification, number>,
 ): void {
   if (items.length === 0) return;
   const entries = items.flatMap((r) => {
@@ -266,7 +359,15 @@ function stack(
   const labelled = Math.floor((entries.length - 1) / 2);
   entries.forEach((r, i) => {
     nodes.push(
-      ...markerNodes(r, edgeX, top + i * step, dir, ctx, i === labelled || r.marker !== 'drug'),
+      ...markerNodes(
+        r,
+        edgeX,
+        top + i * step,
+        dir,
+        ctx,
+        i === labelled || r.marker !== 'drug',
+        reach.get(r) ?? 0,
+      ),
     );
   });
 }
@@ -278,6 +379,7 @@ function markerNodes(
   dir: 1 | -1,
   ctx: DecorateContext,
   withName = true,
+  reach = 0,
 ): SceneNode[] {
   const data: Record<string, string> = { 'modification-type': r.type };
   if (r.payload?.name) data['payload'] = r.payload.name;
@@ -441,7 +543,7 @@ function markerNodes(
         },
       ];
     case 'drug':
-      return payloadNodes(r, x, y, dir, ctx, common, withName);
+      return payloadNodes(r, x, y, dir, ctx, common, withName, reach);
     default:
       return [{ kind: 'circle', cx: x, cy: y, r: 2.1, fill: ctx.theme.labelColor, ...common }];
   }
@@ -456,6 +558,7 @@ function payloadNodes(
   ctx: DecorateContext,
   common: { className: string; data: Record<string, string>; pointerEvents: 'none' },
   withName: boolean,
+  reach = 0,
 ): SceneNode[] {
   const payload = r.payload;
   const structure = ctx.inlineStructures ? r.payload?.structure : undefined;
@@ -464,7 +567,8 @@ function payloadNodes(
   const label = attachmentLabel(payload, Boolean(structure));
   const lead = structure ? 7 : 5;
   const labelSpan = label ? 9 : 0;
-  const trail = structure ? 7 : 3;
+  // The run-in is lengthened until the drawing is clear of the molecule.
+  const trail = structure ? 7 + reach : 3;
   const stalk = lead + labelSpan + trail;
   const radius = 3.4;
   const tipX = x + dir * (stalk + radius);
@@ -484,7 +588,11 @@ function payloadNodes(
 
   const nodes: SceneNode[] = [
     { kind: 'circle', cx: x, cy: y, r: 1.9, fill: r.color, ...common },
-    bond(0, lead),
+    // With no atom label to leave room for, the bond is one unbroken line all
+    // the way to what it carries. It has to be: the line is what says the
+    // compound set out to one side is attached here, and the further the
+    // drawing reaches to get clear the more that matters.
+    bond(0, label ? lead : stalk),
   ];
   if (label) {
     nodes.push({
@@ -521,22 +629,13 @@ function payloadNodes(
     const tipLocalX = x + dir * stalk;
     const worldOut = dirWorldX(dir, ctx.rotation);
     const extendRight = worldOut >= 0;
-    const attach = attachFraction(structure, extendRight);
-    // Naming the neighbouring atom says which way the molecule runs, so the
-    // drawing can be turned to line up with the bond. That supersedes the flip,
-    // which only ever guessed at the same thing and inverted stereochemistry
-    // to get there.
-    const turn = structureTurn(structure, boxWidth, boxHeight, extendRight);
-    const mirror =
-      turn === 0 &&
-      (structure.mirror ?? false) &&
-      (extendRight ? attach.x > 0.5 : attach.x < 0.5);
-    const attachX = (mirror ? 1 - attach.x : attach.x) * boxWidth;
-    const attachY = attach.y * boxHeight;
     // Position the box so that the attachment point lands on the bond's end.
-    const boxX = -attachX;
-    const boxY = -attachY;
-    const box = turnedBox(boxX, boxY, boxWidth, boxHeight, turn);
+    const { x: boxX, y: boxY, turn, mirror, box } = structureBox(
+      structure,
+      boxWidth,
+      boxHeight,
+      extendRight,
+    );
 
     const panel: SceneNode[] = [];
     const drawing = structureNode(r, boxX, boxY, boxWidth, boxHeight, mirror, turn);

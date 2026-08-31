@@ -49,8 +49,12 @@ export interface DepictionOptions {
    * continues into.
    */
   attachTo?: number;
-  /** Drawn size in diagram units. The height follows from the artwork. */
-  width?: number;
+  /**
+   * Longest side of the drawing, in diagram units. Default 150. The other side
+   * follows from the shape of the molecule, so a compound that happens to be
+   * laid out tall does not come out twice the height of the antibody.
+   */
+  size?: number;
   /** Caption under the drawing. */
   caption?: string;
   /** Size the toolkit renders at, before cropping. Larger is finer, not bigger. */
@@ -84,9 +88,9 @@ export function structureFromMolecule(
   const inner = bodyNeighbour(molecule, attachAtom, options.attachTo);
   orient(molecule, attachAtom, inner);
 
-  const size = options.renderSize ?? { width: 420, height: 290 };
+  const canvas = options.renderSize ?? { width: 420, height: 290 };
   const id = `dn-depiction`;
-  const full = molecule.toSVG(size.width, size.height, id, {
+  const full = molecule.toSVG(canvas.width, canvas.height, id, {
     ...DEFAULT_DEPICTION,
     ...options.depiction,
   });
@@ -97,11 +101,13 @@ export function structureFromMolecule(
   const box = tightBox(markup, options.pad ?? 6);
 
   const attach = atomPoint(markup, id, attachAtom);
+  const size = options.size ?? 150;
+  const scale = size / Math.max(box.width, box.height);
   const structure: PayloadStructure = {
     svg: markup,
     viewBox: `${round(box.x)} ${round(box.y)} ${round(box.width)} ${round(box.height)}`,
-    width: options.width ?? 150,
-    height: Math.round((options.width ?? 150) * (box.height / box.width)),
+    width: Math.round(box.width * scale),
+    height: Math.round(box.height * scale),
     attach,
   };
   if (inner != null) structure.attachFrom = atomPoint(markup, id, inner);

@@ -44,12 +44,12 @@ export const LINKERS = {
 };
 
 /** SMILES -> the `structure` object deneb draws. */
-export function structureFor(name, width = 150) {
+export function structureFor(name, size = 150) {
   const entry = LINKERS[name];
   if (!entry) return undefined;
   return structureFromMolecule(OCL.Molecule.fromSmiles(entry.smiles), {
     attachAtom: entry.attachAtom,
     caption: entry.caption,
-    width,
+    size,
   });
 }

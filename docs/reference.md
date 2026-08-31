@@ -299,6 +299,15 @@ chain. Atom labels are kept upright through the turn. Turning supersedes
 `mirror`: a rotation is a proper transform, so unlike a flip it cannot invert
 stereochemistry or reverse the reading order of a label.
 
+A compound is a good deal bigger than the domain it hangs from, so leaving from
+the right edge is not on its own enough: on a tilted Fab arm the drawing can
+still lie back across the antibody. **The bond is what gives way** — it is drawn
+longer, the way a conjugation scheme sets the compound out to one side, until
+the drawing is clear of every glyph. It grows only as far as it has to, so a
+conjugate below the Fc keeps a short bond and one on a CH1 gets a long one. The
+side it leaves from is the one facing away from the body of the molecule, which
+for a Fab's CH1 is not the same as the side facing away from its CL.
+
 A schematic reads better with the chemistry spelled out once, so an inline
 structure is drawn at **one** conjugation site — chosen, where you named the
 conjugated atom, so the molecule extends away from the antibody — while the
@@ -324,6 +333,10 @@ payload.structure = structureFromMolecule(
   { attachAtom: 0, caption: 'mc-Val-Cit-PAB' },
 );
 ```
+
+`size` sets the **longest** side of the drawing, 150 diagram units by default;
+the other follows from the shape of the molecule, so a compound that happens to
+be laid out tall does not come out twice the height of the antibody.
 
 It turns the molecule's own coordinates so the conjugated atom faces the
 antibody — doing it there rather than at draw time means the toolkit lays the
