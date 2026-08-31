@@ -26,6 +26,7 @@ const WANTED = {
   soravtansine: { join: 'carboxyl', what: 'sulfo-SPDB-DM4' },
   tesirine: { join: 'maleimide', what: 'mal-PEG8-Val-Ala-PABC-PBD dimer' },
   ozogamicin: { join: 'amide', what: 'AcBut hydrazone / N-acetyl-γ-calicheamicin' },
+  sunirine: { join: 'maleimide', what: 'sulfonated DGN549C indolinobenzodiazepine' },
 };
 
 /** PubChem resolves some of these by name and some only by CID. */
@@ -38,6 +39,7 @@ const CIDS = {
   soravtansine: 91667591,
   tesirine: 73672523,
   ozogamicin: 9942071,
+  sunirine: 163184692,
 };
 
 const out = { fetched: new Date().toISOString().slice(0, 10), source: 'PubChem PUG REST', moieties: {} };

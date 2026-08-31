@@ -105,6 +105,7 @@
     "adc-demo": "vite build && node scripts/adc-demo.mjs",
     "adc-approved": "vite build && node scripts/adc-approved.mjs",
     "moieties": "node scripts/fetch-moieties.mjs",
+    "adc-labels": "node scripts/fetch-adc-labels.mjs",
     "size": "vite build && node scripts/size.mjs",
     "check-exports": "vite build && node scripts/check-exports.mjs",
     "constant-regions": "node scripts/fetch-constant-regions.mjs",

@@ -776,6 +776,7 @@ npm run gallery      # build, then write examples/gallery.html
 npm run adc-demo     # build, then write examples/adc.html
 npm run adc-approved # build, then write examples/adc-approved.html
 npm run moieties     # refetch scripts/lib/moieties.json from PubChem
+npm run adc-labels   # refetch scripts/lib/adc-labels.json from openFDA
 npm run panel-demo   # build, then write examples/panel.html
 npm run size         # what each entry point costs, and a check that the
                      # viewer has not picked the optional areas back up
@@ -791,19 +792,28 @@ never of the library — and hands the result to `payload.structure`. The molecu
 it ships are example stand-ins; swap in your payload's SMILES and the drawings
 follow.
 
-`scripts/adc-approved.mjs` writes twelve marketed ADCs in the notation and
-prints each string under its own picture, with the whole linker-payload drawn
-out to the right of the antibody. Those moieties are the INN suffixes — the
-`-vedotin` of brentuximab vedotin *is* mc-Val-Cit-PAB-MMAE — fetched from
-PubChem by `npm run moieties`, which checks each record's formula against its
-own InChI, and joined to the antibody by their own chemistry: a maleimide is
-opened by a cysteine thiol, a succinimidyl ester and a free acid lose their
-leaving group and acylate a lysine. Nothing here is a SMILES anyone typed out. Target, linker, payload and
-cleavability are cited on every card. **The drug-to-antibody ratio and the
-conjugation site appear on two of them only** — those are the two the cited
-sources state them for, and the rest leave the fields out rather than assert a
-number. For the same reason the drug mark sits on CH2 throughout: that is where
-the diagram puts it, not a claim about which residue carries the linker.
+`scripts/adc-approved.mjs` writes every marketed antibody conjugate the US
+label database has — sixteen at the time of writing — in the notation, with the
+whole linker-payload drawn out to the right of the antibody. It is the shape a
+platform over this would take, so it is worth saying what it does and does not
+do.
+
+The facts are section 11 of each product's own label, fetched from openFDA by
+`npm run adc-labels`; each description is about 1.5 kB of prose, so this is a
+fetch and not a scrape. The compounds are the INN suffixes — the `-vedotin` of
+brentuximab vedotin *is* mc-Val-Cit-PAB-MMAE — fetched from PubChem by CID with
+`npm run moieties`, which refuses a record whose formula disagrees with its own
+InChI, and joined to the antibody by their own chemistry.
+
+**Every number is checked against its label before the page is written**, so a
+revision that changes a DAR fails the build rather than leaving a stale figure.
+A field the label does not state is left out of the notation rather than filled
+in from elsewhere: fifteen of the sixteen labels do not say which residue the
+linker attaches to, and the pages say so. The one thing no API gives is the list
+of products — openFDA has no "list the ADCs" query — so the brand list was
+seeded by asking for labels whose DESCRIPTION says "antibody-drug conjugate" and
+similar, and then read. Products marketed only outside the US are absent for the
+same reason.
 
 ## Prior art
 

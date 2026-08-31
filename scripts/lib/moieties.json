@@ -57,6 +57,13 @@
       "join": "amide",
       "formula": "C73H97IN6O25S3",
       "smiles": "CCN([C@H]1CO[C@H](C[C@@H]1OC)O[C@@H]2[C@H]([C@@H]([C@H](O[C@H]2O[C@H]3C#C/C=C\\C#C[C@@]\\4(CC(=O)C(=C3/C4=C\\CSSC(C)(C)CC(=O)N/N=C(\\C)/C5=CC=C(C=C5)OCCCC(=O)N)NC(=O)OC)O)C)NO[C@H]6C[C@@H]([C@@H]([C@H](O6)C)SC(=O)C7=C(C(=C(C(=C7OC)OC)O[C@H]8[C@@H]([C@@H]([C@H]([C@@H](O8)C)O)OC)O)I)C)O)O)C(=O)C"
+    },
+    "sunirine": {
+      "cid": 163184692,
+      "what": "sulfonated DGN549C indolinobenzodiazepine",
+      "join": "maleimide",
+      "formula": "C60H63N9O15S",
+      "smiles": "C[C@@H](C(=O)N[C@@H](C)C(=O)NC1=CC(=CC(=C1)COC2=C(C=C3C(=C2)N[C@H]([C@@H]4CC5=CC=CC=C5N4C3=O)S(=O)(=O)O)OC)COC6=C(C=C7C(=C6)NC[C@@H]8CC9=CC=CC=C9N8C7=O)OC)NC(=O)CCCCC(=O)NCCN1C(=O)C=CC1=O"
     }
   }
 }
