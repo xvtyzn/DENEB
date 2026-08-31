@@ -103,9 +103,11 @@ export function buildScene(
       ? chooseStructureSites(result, surfaceSigns, options.repeatStructures ?? false)
       : new Set<string>();
 
-  const connectorNodes: SceneNode[] = result.connectors.map((c) =>
-    connectorNode(c, theme),
-  );
+  // A connector whose two ends coincide — a branch that starts exactly on the
+  // face it leaves — would draw as a round dot rather than nothing at all.
+  const connectorNodes: SceneNode[] = result.connectors
+    .filter((c) => c.via?.length || Math.hypot(c.b.x - c.a.x, c.b.y - c.a.y) > 0.05)
+    .map((c) => connectorNode(c, theme));
 
   const domainNodes: SceneNode[] = result.domains.map((p) => {
     const node = domainNode(p, {

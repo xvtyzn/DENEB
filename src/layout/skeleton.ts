@@ -85,6 +85,25 @@ interface Built {
   extra: Connector[];
 }
 
+/**
+ * Line a branch up under the terminus it grows from.
+ *
+ * The strand has to leave that face and drop straight into the branch, so what
+ * must sit under the anchor is the branch's own N-terminal anchor -- not the
+ * centre of whichever glyph is placed first, which is half a lane to one side.
+ * Aligning the centre is what made an appended scFv's linker set off sideways
+ * before it turned back down.
+ */
+function alignBranch(
+  nodes: PlacedDomain[],
+  first: NDomain | undefined,
+  anchor: Point,
+): PlacedDomain[] {
+  const head = first ? nodes.find((p) => p.domain.id === first.id) : undefined;
+  if (!head) return nodes;
+  return translatePlaced(nodes, anchor.x - head.nAnchor.x, 0);
+}
+
 // ---------------------------------------------------------------------------
 // Y skeleton: Fc stem, Fab arms, optional C-terminal branches
 // ---------------------------------------------------------------------------
@@ -220,12 +239,7 @@ function layoutY(construct: NormalizedConstruct, theme: Theme): Built {
           laneGap: theme.laneGap,
           slotGap: theme.slotGap,
         });
-        const first = branch.placed[0];
-        placed.push(
-          ...(first
-            ? translatePlaced(branch.placed, jointPlaced.cAnchor.x - first.center.x, 0)
-            : branch.placed),
-        );
+        placed.push(...alignBranch(branch.placed, lcTail[0], jointPlaced.cAnchor));
       }
     });
   }
@@ -257,15 +271,17 @@ function layoutY(construct: NormalizedConstruct, theme: Theme): Built {
       origin: anchor ?? stem.end,
       dirAngle,
       glyphAngle: dirAngle - 180,
-      laneSign: s === 0 ? 1 : -1,
+      // The half that carries the chain on from the Fc takes the inner lane, so
+      // the linker drops straight down out of the CH3 instead of reaching around
+      // an appended scFv to its far side. Whatever that half is paired with then
+      // sits outwards, away from the other branch.
+      laneSign: s === 0 ? -1 : 1,
       laneGap: theme.laneGap,
       slotGap: theme.slotGap,
     });
     // Start the branch directly under the CH3 it leaves, so the linker drops out
     // of the bottom of that domain rather than off one of its corners.
-    let nodes = branch.placed;
-    const head = nodes[0];
-    if (head && anchor) nodes = translatePlaced(nodes, anchor.x - head.center.x, 0);
+    let nodes = anchor ? alignBranch(branch.placed, part.cTerm[0], anchor) : branch.placed;
 
     // Only if the two branches still meet does either get pushed off the axis.
     if (branching > 1 && nodes.length > 0) {

@@ -207,6 +207,55 @@ describe('Y geometry', () => {
     expect(appended.center.y).toBeGreaterThan(ch3.center.y);
   });
 
+  it('starts an appended module under the face it leaves, not half a lane over', () => {
+    // The branch is a two-lane ladder, so its first glyph sits off to one side
+    // of its own axis. What has to line up with the CH3 is the point the strand
+    // actually leaves from.
+    const result = layout(getPreset('igg-hc-scfv'));
+    const ch3 = result.byDomainId.get('HC:4')!;
+    const linker = result.byDomainId.get('HC:5')!;
+    expect(linker.nAnchor.x).toBeCloseTo(ch3.cAnchor.x, 5);
+    expect(linker.nAnchor.y).toBeGreaterThan(ch3.cAnchor.y);
+  });
+
+  it('turns an appended scFv so the half that carries the chain sits inside', () => {
+    const result = layout(getPreset('igg-hc-scfv'));
+    const vh = result.byDomainId.get('HC:6')!;
+    const vl = result.byDomainId.get('HC:8')!;
+    expect(Math.abs(vh.center.x)).toBeLessThan(Math.abs(vl.center.x));
+  });
+
+  it('drops a light-chain fusion out of the CL that carries it', () => {
+    const result = layout(getPreset('igg-lc-scfv'));
+    const cl = result.byDomainId.get('LC:1')!;
+    const linker = result.byDomainId.get('LC:2')!;
+    expect(linker.nAnchor.x).toBeCloseTo(cl.cAnchor.x, 5);
+    const vh = result.byDomainId.get('LC:3')!;
+    const vl = result.byDomainId.get('LC:5')!;
+    expect(Math.abs(vh.center.x)).toBeLessThan(Math.abs(vl.center.x));
+  });
+
+  it('stacks tandem scFv heads so the strand between them runs up the ladder', () => {
+    // The C-terminus of the upper head has to sit directly above the
+    // N-terminus of the lower one. Left to the default lanes the strand hands
+    // off from the outer half of one head to the inner half of the next and
+    // cuts across the full width of both.
+    const result = layout(
+      parseDSL(`
+        HC1: VH(CD3)~VL(CD3)~VH(CD28)~VL(CD28)~VH(HER2)-CH1-h-CH2-CH3[knob]
+        LC1: VL(HER2)-CL
+        HC2: VH(CD20)-CH1-h-CH2-CH3[hole]
+        LC2: VL(CD20)-CL
+      `),
+    );
+    const upper = result.byDomainId.get('HC1:2')!;
+    const lower = result.byDomainId.get('HC1:4')!;
+    expect(upper.lane).toBe(lower.lane);
+    const delta = { x: lower.nAnchor.x - upper.cAnchor.x, y: lower.nAnchor.y - upper.cAnchor.y };
+    const across = delta.x * -upper.axis.y + delta.y * upper.axis.x;
+    expect(Math.abs(across), 'the junction should not run across the head').toBeLessThan(1);
+  });
+
   it('hangs a C-terminal fusion below the Fc', () => {
     const result = layout(getPreset('igg-hc-scfv'));
     const ch3 = result.domains.find((d) => d.domain.type === 'CH3')!;

@@ -23,6 +23,11 @@ export interface Unit {
    * Fv does; the flag only buys the strand a wider gap to run up.
    */
   linked: boolean;
+  /**
+   * Swap which lane the members take. Only slots whose two halves are
+   * interchangeable are ever turned round; see `orientUnits`.
+   */
+  flip?: boolean;
 }
 
 export function domainHeight(d: NDomain): number {
@@ -84,6 +89,64 @@ export function unitsOfList(list: NDomain[]): Unit[] {
     out.push(makeUnit([d], false));
   }
   return out;
+}
+
+/** Which lane a member takes, as a multiple of the ladder's `laneSign`. */
+export function relativeLane(unit: Unit, index: number): 1 | -1 {
+  const primary: 1 | -1 = unit.flip ? -1 : 1;
+  if (unit.members.length < 2) return primary;
+  return index === 0 ? primary : ((-primary) as 1 | -1);
+}
+
+/** The two members a strand actually runs between, for two adjacent slots. */
+function junction(a: Unit, b: Unit): { from: number; to: number } | undefined {
+  let best: { from: number; to: number; gap: number } | undefined;
+  a.members.forEach((am, from) => {
+    b.members.forEach((bm, to) => {
+      if (am.chainId !== bm.chainId) return;
+      const gap = Math.abs(am.index - bm.index);
+      if (!best || gap < best.gap) best = { from, to, gap };
+    });
+  });
+  if (!best) return undefined;
+  return { from: best.from, to: best.to };
+}
+
+/**
+ * Can this slot be turned round without changing what the picture says?
+ *
+ * An scFv head reads the same either way round -- VH left of VL or right of it
+ * is a drawing choice, not a claim about the molecule. A linker occupies a slot
+ * but draws no glyph, so it may sit in either lane too. Everything else is
+ * fixed: an Fv head shared with a light chain has to keep the heavy half inside,
+ * or a CrossMab's hinge starts running across the Fc.
+ */
+function flippable(unit: Unit): boolean {
+  if (unit.linked) return true;
+  return unit.members.length === 1 && unit.members[0]!.type === 'linker';
+}
+
+/**
+ * Turn slots round so the strand between them runs along the ladder instead of
+ * across it.
+ *
+ * Units are built walking out from the base, so by default the half nearest the
+ * base takes the inner lane. That is right for the first slot and wrong for the
+ * next one: a tandem of two scFv heads then hands the strand off from the outer
+ * half of one head to the inner half of the next, and it cuts diagonally across
+ * the whole width. Choosing each lane by where the strand arrives instead puts
+ * the C-terminus of one head directly above the N-terminus of the one below.
+ */
+export function orientUnits(units: Unit[]): void {
+  for (let k = 1; k < units.length; k++) {
+    const unit = units[k]!;
+    if (!flippable(unit)) continue;
+    const link = junction(units[k - 1]!, unit);
+    if (!link) continue;
+    const arrives = relativeLane(units[k - 1]!, link.from);
+    const natural = unit.members.length < 2 ? 1 : link.to === 0 ? 1 : -1;
+    unit.flip = natural !== arrives;
+  }
 }
 
 function partnersOf(unit: Unit): string[] {

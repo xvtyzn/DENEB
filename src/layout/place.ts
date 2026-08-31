@@ -1,7 +1,7 @@
 import { DOMAIN_CATALOG } from '../model/catalog';
 import type { Theme } from '../theme/theme';
 import { add, dirOf, perpOf, rotate, scale } from './geometry';
-import { LINKED_SPREAD, domainWidth, type Unit } from './modules';
+import { LINKED_SPREAD, domainWidth, orientUnits, relativeLane, type Unit } from './modules';
 import type { PlacedDomain, Point } from './types';
 
 export interface LadderOptions {
@@ -33,6 +33,7 @@ export function placeLadder(units: Unit[], opts: LadderOptions): LadderResult {
   const perp = perpOf(dir);
   const placed: PlacedDomain[] = [];
   const useLane = opts.forceLane ?? units.some((u) => u.members.length > 1);
+  orientUnits(units);
 
   let cursor = 0;
   let width = 0;
@@ -41,7 +42,7 @@ export function placeLadder(units: Unit[], opts: LadderOptions): LadderResult {
     unit.members.forEach((domain, idx) => {
       const spec = DOMAIN_CATALOG[domain.type];
       const lane =
-        unit.members.length > 1 || useLane ? (idx === 0 ? opts.laneSign : -opts.laneSign) : 0;
+        unit.members.length > 1 || useLane ? relativeLane(unit, idx) * opts.laneSign : 0;
       // A linker-joined pair sits level like any other, just further apart, so
       // the strand between them has somewhere to run.
       const laneGap = opts.laneGap + (unit.linked ? LINKED_SPREAD : 0);
