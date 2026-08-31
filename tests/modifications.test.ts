@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { layout, normalize, parseDSL, renderSVG, resolveModification } from '../src/index';
 import { DOMAIN_CATALOG, MODIFICATION_CATALOG } from '../src/model/catalog';
 import { getPreset } from '../src/presets/index';
-import type { ModificationType } from '../src/model/types';
+import type { ModificationType, PayloadStructure } from '../src/model/types';
 
 describe('conjugated payloads', () => {
   it('parses the compound, linker, DAR, copy count and site from the DSL', () => {
@@ -112,6 +112,21 @@ describe('payload structures', () => {
     ],
   };
 
+  const withStructure = (s: PayloadStructure) => ({
+    chains: [
+      {
+        id: 'C1',
+        domains: [
+          {
+            type: 'VHH' as const,
+            specificity: 'X',
+            modifications: [{ type: 'drug' as const, payload: { name: 'MMAE', structure: s } }],
+          },
+        ],
+      },
+    ],
+  });
+
   it('draws a captioned thumbnail in the legend by default', () => {
     const { svg } = renderSVG(construct);
     expect(svg).toContain('Structures');
@@ -129,6 +144,59 @@ describe('payload structures', () => {
     expect((svg.match(/class="dn-structure"/g) ?? []).length).toBe(1);
     // The panel is counter-rotated so the chemistry stays upright.
     expect(svg).toMatch(/dn-payload-structure[^>]*rotate\(/);
+  });
+
+  it('turns the drawing so the bond runs straight into it', () => {
+    // The artwork's own bond points down (attach below attachFrom); the drawing
+    // has to be turned a quarter circle for it to meet a horizontal bond.
+    const turned = {
+      ...structure,
+      attach: { x: 5, y: 9 },
+      attachFrom: { x: 5, y: 1 },
+    };
+    const { svg } = renderSVG(withStructure(turned), { showStructures: 'inline' });
+    const turn = /class="dn-structure-turn" transform="rotate\(([-\d.]+)\)"/.exec(svg);
+    expect(turn, 'the drawing should be turned').not.toBeNull();
+    expect(Math.abs(Number(turn![1]))).toBeCloseTo(90, 0);
+  });
+
+  it('leaves a drawing alone when its bond already points the right way', () => {
+    const aligned = {
+      ...structure,
+      attach: { x: 9, y: 5 },
+      attachFrom: { x: 1, y: 5 },
+    };
+    const { svg } = renderSVG(withStructure(aligned), { showStructures: 'inline' });
+    expect(svg).not.toContain('dn-structure-turn');
+  });
+
+  it('keeps atom labels upright through the turn', () => {
+    const labelled = {
+      svg: '<text x="4" y="6" font-size="3">S</text><circle cx="5" cy="5" r="4"/>',
+      viewBox: '0 0 10 10',
+      attach: { x: 5, y: 9 },
+      attachFrom: { x: 5, y: 1 },
+    };
+    const { svg } = renderSVG(withStructure(labelled), { showStructures: 'inline' });
+    const outer = Number(
+      /class="dn-structure-turn" transform="rotate\(([-\d.]+)\)"/.exec(svg)![1],
+    );
+    const label = /<text x="4" y="6"[^>]*transform="rotate\(([-\d.]+),4,6\)"/.exec(svg);
+    expect(label, 'the label should be turned back').not.toBeNull();
+    expect(Number(label![1])).toBeCloseTo(-outer, 5);
+  });
+
+  it('does not flip a drawing that says which way round it goes', () => {
+    // A flip inverts stereochemistry; turning cannot, so naming the neighbouring
+    // atom supersedes `mirror`.
+    const both = {
+      ...structure,
+      attach: { x: 9, y: 5 },
+      attachFrom: { x: 1, y: 5 },
+      mirror: true,
+    };
+    const { svg } = renderSVG(withStructure(both), { showStructures: 'inline' });
+    expect(svg).not.toContain('dn-structure-mirror');
   });
 
   it('can be turned off entirely', () => {

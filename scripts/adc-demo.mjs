@@ -156,28 +156,29 @@ const html = `<!doctype html>
 <h1>ADC payloads</h1>
 <p class="lede">
   deneb draws the conjugation — the linker stalk, the payload glyph, the DAR
-  and the site — and will place a chemical structure you supply. It does not depict
-  chemistry itself. Below, each structure was generated from a SMILES string with
-  OpenChemLib (a devDependency of this repo, not of the library) in
-  <code>scripts/adc-demo.mjs</code>. Each linker is drawn in its conjugated form,
-  and the bond from the antibody lands on the exact atom that carries it — the
-  sulfur of a thiosuccinimide, the nitrogen of a lysine amide — rather than on the
-  edge of a box. <strong>What is drawn is the linker chemistry; the warhead itself
-  is left off</strong> — replace the SMILES in that file with your own
-  linker-payload and the pictures follow.
+  and the site — and will place a chemical structure you supply. It depicts no
+  chemistry itself. Below, each structure came from a SMILES string run through
+  OpenChemLib (a devDependency of this repo, not of the library) and then through
+  <code>deneb/chem</code>, which turns the molecule so the conjugated atom faces
+  the antibody and reports where that atom and the one behind it ended up. The
+  bond from the antibody then lands on the exact atom that carries it — the
+  sulfur of a thiosuccinimide, the nitrogen of a lysine amide — and carries
+  straight on into the molecule rather than meeting it at an angle.
+  <strong>What is drawn is the linker chemistry; the warhead itself is left
+  off</strong> — replace the SMILES with your own linker-payload and the pictures
+  follow.
 </p>
 <div class="grid">${[...cases, inlineCase].map(card).join('')}</div>
-<pre>import { structureFor } from './lib/linkers.mjs';
+<pre>import { Molecule } from 'openchemlib';
+import { structureFromMolecule } from 'deneb/chem';
 
-const molecule = OCL.Molecule.fromSmiles(smiles);
-const svg = molecule.toSVG(300, 190, 'payload');
-
-payload.structure = {
-  svg: svg.replace(/^[\\s\\S]*?&lt;svg[^&gt;]*&gt;/, '').replace(/&lt;\\/svg&gt;\\s*$/, ''),
-  viewBox: '0 0 300 190',
-  width: 104,
-  height: 66,
-};</pre>
+// The SMILES is written to start at the atom the antibody is bonded to, so
+// that is atom 0. The linker is in its conjugated form: the maleimide already
+// opened by the thiol.
+payload.structure = structureFromMolecule(
+  Molecule.fromSmiles('SC2CC(=O)N(CCCCCC(=O)N…)C2=O'),
+  { attachAtom: 0, caption: 'mc-Val-Cit-PAB' },
+);</pre>
 `;
 
 mkdirSync(resolve(root, 'examples'), { recursive: true });

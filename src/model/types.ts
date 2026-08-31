@@ -129,6 +129,19 @@ export interface PayloadStructure {
    */
   attach?: { x: number; y: number };
   /**
+   * The atom inside the molecule that `attach` is bonded to, in the same
+   * coordinates as `attach`.
+   *
+   * Given both, the drawing is turned so that bond carries straight on from the
+   * bond coming off the antibody, and the molecule runs away from the protein
+   * instead of at whatever angle the depiction toolkit happened to lay it out
+   * at — which is what makes the linker and the compound read as one chain
+   * rather than two pieces at an angle to each other. Atom labels are kept
+   * upright through the turn. Turning supersedes `mirror`: a rotation is a
+   * proper transform, so it cannot invert stereochemistry the way a flip does.
+   */
+  attachFrom?: { x: number; y: number };
+  /**
    * Allow the artwork to be flipped horizontally when its attachment point would
    * otherwise face away from the antibody. Off by default: a mirrored depiction
    * reverses the reading order of multi-glyph labels, and inverts wedge

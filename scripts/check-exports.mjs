@@ -25,6 +25,7 @@ import { renderPanel, renderComparison } from 'deneb/panel';
 import { fromANARCI, fromIgBLAST } from 'deneb/import';
 import { parseAbML, toAbML } from 'deneb/abml';
 import { parseVeritas, toVeritas } from 'deneb/veritas';
+import { structureFromMolecule, type DepictableMolecule } from 'deneb/chem';
 
 const construct: Construct = getPreset(presetNames()[0]!);
 renderSVG(construct);
@@ -37,6 +38,8 @@ fromANARCI('');
 fromIgBLAST('');
 parseAbML(toAbML(construct));
 parseVeritas(toVeritas(construct).name);
+declare const molecule: DepictableMolecule;
+structureFromMolecule(molecule, { attachAtom: 0 });
 `;
 
 const TSX = `

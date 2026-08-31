@@ -98,9 +98,30 @@ export function buildScene(
     const partner = p.domain.partner ? result.byDomainId.get(p.domain.partner) : undefined;
     surfaceSigns.set(p.domain.id, (-sideToward(p, partner?.center ?? centroid)) as 1 | -1);
   }
+  // A hinge or an scFv linker has no glyph, so anything attached to one is
+  // drawn against the connector that stands in for it. Those frames are built
+  // here rather than at the point of use, so a domain without a glyph takes
+  // part in choosing where an inline structure goes -- an ADC conjugated to the
+  // interchain cysteines is conjugated to a hinge, and leaving it out of that
+  // choice drew the depiction at every site at once, across the molecule.
+  const skipped: Array<{ domain: NDomain; frame: PlacedDomain }> = [];
+  for (const connector of result.connectors) {
+    for (const id of connector.skipped ?? []) {
+      const domain = construct.byId.get(id);
+      if (!domain || domain.modifications.length === 0) continue;
+      const frame = skippedFrame(domain, connector);
+      skipped.push({ domain, frame });
+      surfaceSigns.set(domain.id, (-sideToward(frame, centroid)) as 1 | -1);
+    }
+  }
+
   const inlineAt =
     showStructures === 'inline'
-      ? chooseStructureSites(result, surfaceSigns, options.repeatStructures ?? false)
+      ? chooseStructureSites(
+          [...result.domains, ...skipped.map((s) => s.frame)],
+          surfaceSigns,
+          options.repeatStructures ?? false,
+        )
       : new Set<string>();
 
   // A connector whose two ends coincide — a branch that starts exactly on the
@@ -143,30 +164,22 @@ export function buildScene(
     return node.node;
   });
 
-  // A hinge or an scFv linker has no glyph, so anything attached to one would
-  // otherwise be dropped — S228P on an IgG4 hinge, or the interchain cysteines
-  // an ADC is usually conjugated to. Draw those against the connector that
-  // stands in for the domain.
-  for (const connector of result.connectors) {
-    for (const id of connector.skipped ?? []) {
-      const domain = construct.byId.get(id);
-      if (!domain || domain.modifications.length === 0) continue;
-      const node = skippedDomainNode(domain, connector, {
-        theme,
-        showPayloadNames: options.showPayloadNames ?? true,
-        inlineStructures: showStructures === 'inline',
-        centroid,
-        prefix,
-        highlighted,
-      });
-      domainNodes.push(node.node);
-      for (const m of domain.modifications) {
-        const r = resolveModification(m, domain.id);
-        const key = `${r.type}|${r.label}`;
-        if (!usedModifications.has(key)) usedModifications.set(key, r);
-      }
-      reachPoints.push(...node.reach);
+  for (const { domain, frame } of skipped) {
+    const node = skippedDomainNode(domain, frame, {
+      theme,
+      showPayloadNames: options.showPayloadNames ?? true,
+      inlineStructures: showStructures === 'inline' && inlineAt.has(domain.id),
+      centroid,
+      prefix,
+      highlighted,
+    });
+    domainNodes.push(node.node);
+    for (const m of domain.modifications) {
+      const r = resolveModification(m, domain.id);
+      const key = `${r.type}|${r.label}`;
+      if (!usedModifications.has(key)) usedModifications.set(key, r);
     }
+    reachPoints.push(...node.reach);
   }
 
   const bbox = expand(result.bbox, reachPoints, theme.padding);
@@ -273,14 +286,14 @@ interface DomainContext {
  * mirror the drawing, and with it the risk of mirror-written atom labels.
  */
 function chooseStructureSites(
-  result: LayoutResult,
+  carriers: PlacedDomain[],
   surfaceSigns: Map<string, 1 | -1>,
   repeat: boolean,
 ): Set<string> {
   const chosen = new Set<string>();
   const claimed = new Set<Payload['structure']>();
 
-  for (const placed of result.domains) {
+  for (const placed of carriers) {
     for (const m of placed.domain.modifications) {
       const structure = m.payload?.structure;
       if (!structure || (structure.svg == null && !structure.href)) continue;
@@ -290,7 +303,7 @@ function chooseStructureSites(
       }
       if (claimed.has(structure)) continue;
       const wants = preferredSide(structure);
-      const candidates = result.domains.filter((d) =>
+      const candidates = carriers.filter((d) =>
         d.domain.modifications.some((other) => other.payload?.structure === structure),
       );
       const fits = candidates.find((d) => {
@@ -468,9 +481,30 @@ function domainNode(
  * connector, with its local "up" along the chain, so a marker or a conjugation
  * stalk leaves the hinge the same way it leaves any other domain.
  */
+/**
+ * The frame a glyph-less domain would have occupied: the middle of the
+ * connector standing in for it, turned to follow the strand. Decorations are
+ * hung on this, and it is what lets such a domain take part in choosing where
+ * an inline structure is drawn.
+ */
+export function skippedFrame(domain: NDomain, connector: Connector): PlacedDomain {
+  const spec = DOMAIN_CATALOG[domain.type];
+  const mid = pointOn(connector.a, connector.b, connector.via, 0.5);
+  const tail = pointOn(connector.a, connector.b, connector.via, 0.35);
+  const head = pointOn(connector.a, connector.b, connector.via, 0.65);
+  const rotation = (Math.atan2(head.y - tail.y, head.x - tail.x) * 180) / Math.PI - 90;
+  return {
+    domain,
+    center: mid,
+    rotation,
+    width: spec.width,
+    height: spec.height,
+  } as PlacedDomain;
+}
+
 function skippedDomainNode(
   domain: NDomain,
-  connector: Connector,
+  frame: PlacedDomain,
   ctx: {
     theme: Theme;
     showPayloadNames: boolean;
@@ -481,18 +515,8 @@ function skippedDomainNode(
   },
 ): { node: SceneNode; reach: Point[] } {
   const spec = DOMAIN_CATALOG[domain.type];
-  const mid = pointOn(connector.a, connector.b, connector.via, 0.5);
-  const tail = pointOn(connector.a, connector.b, connector.via, 0.35);
-  const head = pointOn(connector.a, connector.b, connector.via, 0.65);
-  const rotation = (Math.atan2(head.y - tail.y, head.x - tail.x) * 180) / Math.PI - 90;
-
-  const frame: PlacedDomain = {
-    domain,
-    center: mid,
-    rotation,
-    width: spec.width,
-    height: spec.height,
-  } as PlacedDomain;
+  const mid = frame.center;
+  const rotation = frame.rotation;
   // Nothing pairs with a hinge, so "interface" and "surface" both mean the
   // side away from the body of the molecule.
   const away = (-sideToward(frame, ctx.centroid)) as 1 | -1;

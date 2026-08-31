@@ -86,6 +86,7 @@ export function structureNode(
   width: number,
   height: number,
   mirror = false,
+  turn = 0,
 ): SceneNode | null {
   const structure = r.payload?.structure;
   if (!structure || (structure.svg == null && !structure.href)) return null;
@@ -103,14 +104,26 @@ export function structureNode(
     ariaLabel: structure.caption ?? r.payload?.name,
   };
   if (structure.viewBox) node.viewBox = structure.viewBox;
-  if (structure.svg != null) node.markup = mirror ? unmirrorLabels(structure.svg) : structure.svg;
-  else node.href = structure.href;
-  if (!mirror) return node;
+  if (structure.svg != null) {
+    node.markup = mirror
+      ? unmirrorLabels(structure.svg)
+      : uprightLabels(structure.svg, turn);
+  } else node.href = structure.href;
+  const placed: SceneNode = mirror
+    ? {
+        kind: 'group',
+        transform: `translate(${round(2 * x + width)},0) scale(-1,1)`,
+        children: [node],
+        className: 'dn-structure-mirror',
+      }
+    : node;
+  if (turn === 0) return placed;
+  // Turned about the origin, which is the point the bond arrives at.
   return {
     kind: 'group',
-    transform: `translate(${round(2 * x + width)},0) scale(-1,1)`,
-    children: [node],
-    className: 'dn-structure-mirror',
+    transform: `rotate(${round(turn)})`,
+    children: [placed],
+    className: 'dn-structure-turn',
   };
 }
 
@@ -509,24 +522,33 @@ function payloadNodes(
     const worldOut = dirWorldX(dir, ctx.rotation);
     const extendRight = worldOut >= 0;
     const attach = attachFraction(structure, extendRight);
-    const mirror = (structure.mirror ?? false) && (extendRight ? attach.x > 0.5 : attach.x < 0.5);
+    // Naming the neighbouring atom says which way the molecule runs, so the
+    // drawing can be turned to line up with the bond. That supersedes the flip,
+    // which only ever guessed at the same thing and inverted stereochemistry
+    // to get there.
+    const turn = structureTurn(structure, boxWidth, boxHeight, extendRight);
+    const mirror =
+      turn === 0 &&
+      (structure.mirror ?? false) &&
+      (extendRight ? attach.x > 0.5 : attach.x < 0.5);
     const attachX = (mirror ? 1 - attach.x : attach.x) * boxWidth;
     const attachY = attach.y * boxHeight;
     // Position the box so that the attachment point lands on the bond's end.
     const boxX = -attachX;
     const boxY = -attachY;
+    const box = turnedBox(boxX, boxY, boxWidth, boxHeight, turn);
 
     const panel: SceneNode[] = [];
-    const drawing = structureNode(r, boxX, boxY, boxWidth, boxHeight, mirror);
+    const drawing = structureNode(r, boxX, boxY, boxWidth, boxHeight, mirror, turn);
     if (drawing) panel.push(drawing);
     // Square brackets with the drug-to-antibody ratio, as ADC schemes bracket
     // the repeating linker-payload unit.
     if (payload?.dar != null) {
       const far = extendRight ? 1 : -1;
-      const left = boxX - 3;
-      const right = boxX + boxWidth + 3;
-      const top = boxY - 3;
-      const bottom = boxY + boxHeight + 3;
+      const left = box.x - 3;
+      const right = box.x + box.width + 3;
+      const top = box.y - 3;
+      const bottom = box.y + box.height + 3;
       panel.push(
         bracket(left, top, bottom, 1, r.color),
         bracket(right, top, bottom, -1, r.color),
@@ -548,8 +570,8 @@ function payloadNodes(
     if (ctx.showPayloadNames && payload?.name) {
       panel.push({
         kind: 'text',
-        x: boxX + boxWidth / 2,
-        y: boxY + boxHeight + 10,
+        x: box.x + box.width / 2,
+        y: box.y + box.height + 10,
         text: payload.name,
         fontSize: ctx.theme.legendSize - 0.5,
         fontFamily: ctx.theme.fontFamily,
@@ -629,14 +651,96 @@ export function attachFraction(
   extendRight: boolean,
 ): { x: number; y: number } {
   if (!structure.attach) return { x: extendRight ? 0 : 1, y: 0.5 };
+  return fractionOf(structure, structure.attach);
+}
+
+/** A point in the artwork's own coordinates, as a fraction of its box. */
+function fractionOf(
+  structure: NonNullable<Payload['structure']>,
+  point: { x: number; y: number },
+): { x: number; y: number } {
   const box = structure.viewBox?.trim().split(/[\s,]+/).map(Number);
   if (box && box.length === 4 && box[2] && box[3]) {
-    return {
-      x: (structure.attach.x - box[0]!) / box[2],
-      y: (structure.attach.y - box[1]!) / box[3],
-    };
+    return { x: (point.x - box[0]!) / box[2], y: (point.y - box[1]!) / box[3] };
   }
-  return structure.attach;
+  return point;
+}
+
+/**
+ * How far to turn the drawing so its open bond continues the one coming off the
+ * antibody.
+ *
+ * The bond arrives horizontally, so the atom it lands on has to have the rest
+ * of the molecule directly behind it. `attachFrom` says which way that is in
+ * the artwork; the difference between that and the direction the bond needs is
+ * the angle. Zero when the caller named no neighbouring atom, which leaves
+ * every existing drawing exactly where it was.
+ */
+export function structureTurn(
+  structure: NonNullable<Payload['structure']>,
+  width: number,
+  height: number,
+  extendRight: boolean,
+): number {
+  if (!structure.attach || !structure.attachFrom) return 0;
+  const a = fractionOf(structure, structure.attach);
+  const from = fractionOf(structure, structure.attachFrom);
+  const ux = (a.x - from.x) * width;
+  const uy = (a.y - from.y) * height;
+  if (ux === 0 && uy === 0) return 0;
+  // The molecule sits away from the antibody, so the bond from its body out to
+  // the conjugated atom points back at the protein.
+  const wanted = extendRight ? Math.PI : 0;
+  const turn = ((wanted - Math.atan2(uy, ux)) * 180) / Math.PI;
+  return ((turn % 360) + 540) % 360 - 180;
+}
+
+/** The box a drawing occupies once turned about the point it hangs from. */
+export function turnedBox(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  degrees: number,
+): { x: number; y: number; width: number; height: number } {
+  if (degrees === 0) return { x, y, width, height };
+  const rad = (degrees * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const [px, py] of [
+    [x, y],
+    [x + width, y],
+    [x + width, y + height],
+    [x, y + height],
+  ] as const) {
+    xs.push(px * cos - py * sin);
+    ys.push(px * sin + py * cos);
+  }
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY };
+}
+
+/**
+ * Keep atom labels the right way up through a turn.
+ *
+ * The drawing is rotated as a whole, which would carry its text round with it.
+ * Each label is turned back about its own anchor, so it stays where the atom
+ * is and stays readable. The artwork is scaled uniformly into its box, so the
+ * angle inside the drawing is the same one applied outside it.
+ */
+function uprightLabels(markup: string, degrees: number): string {
+  if (degrees === 0) return markup;
+  const back = round(-degrees);
+  return markup.replace(/<text\b([^>]*)>/g, (tag, attrs: string) => {
+    if (/\stransform="/.test(attrs)) return tag;
+    const x = /\sx="([-\d.]+)"/.exec(attrs)?.[1];
+    const y = /\sy="([-\d.]+)"/.exec(attrs)?.[1];
+    if (!x || !y) return tag;
+    return `<text${attrs} transform="rotate(${back},${x},${y})">`;
+  });
 }
 
 /**

@@ -63,6 +63,7 @@ const OPTIONAL_AREAS = [
   'src/react/',
   'src/abml/',
   'src/veritas/',
+  'src/chem/',
 ];
 
 describe('entry point boundaries', () => {

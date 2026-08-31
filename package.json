@@ -82,6 +82,11 @@
       "import": "./dist/abml.js",
       "require": "./dist/abml.cjs"
     },
+    "./chem": {
+      "types": "./dist/chem/index.d.ts",
+      "import": "./dist/chem.js",
+      "require": "./dist/chem.cjs"
+    },
     "./veritas": {
       "types": "./dist/veritas/index.d.ts",
       "import": "./dist/veritas.js",

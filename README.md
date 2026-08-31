@@ -135,6 +135,7 @@ verbatim and unsanitised; use `href` for user-supplied artwork.
 | `deneb/import` | ANARCI and IgBLAST adapters |
 | `deneb/abml` | AbML v1.06 reader and writer |
 | `deneb/veritas` | VERITAS name reader and writer |
+| `deneb/chem` | Compound artwork, turned to face the antibody |
 
 The core entry is about 26 kB gzipped and is checked not to pull these optional
 areas into viewer-only applications.

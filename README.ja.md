@@ -132,6 +132,7 @@ const { svg } = renderSVG(construct);
 | `deneb/import` | ANARCI / IgBLAST アダプタ |
 | `deneb/abml` | AbML v1.06 の読み書き |
 | `deneb/veritas` | VERITAS 名の読み書き |
+| `deneb/chem` | 化合物の作図。抗体を向くように回転させる |
 
 コアは gzip 約 26 kB で、ビューアだけを使うアプリケーションへ任意機能を取り込まない
 ことを継続的に検査しています。

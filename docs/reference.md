@@ -291,13 +291,49 @@ that actually matters: not that a payload is attached, but *where* on the linker
 it is attached. The synthetic `attachment` label is dropped in that case, because
 the drawing already shows the atom and the bond it makes.
 
+Name the neighbouring atom too, as `attachFrom`, and the drawing is **turned**
+so that bond carries straight on from the bond coming off the antibody. Without
+it the molecule leaves the protein at whatever angle the depiction toolkit
+happened to lay it out at, and the linker and the compound stop reading as one
+chain. Atom labels are kept upright through the turn. Turning supersedes
+`mirror`: a rotation is a proper transform, so unlike a flip it cannot invert
+stereochemistry or reverse the reading order of a label.
+
 A schematic reads better with the chemistry spelled out once, so an inline
 structure is drawn at **one** conjugation site — chosen, where you named the
-conjugated atom, so the molecule extends away from the antibody and needs no
-mirroring — while the other sites keep their payload glyph. Pass
-`repeatStructures: true` to draw it everywhere. Artwork is not mirrored by
-default; set `structure.mirror: true` if the far-side copy may be flipped. Atom
-labels are kept readable when that opt-in flip is applied.
+conjugated atom, so the molecule extends away from the antibody — while the
+other sites keep their payload glyph. Pass `repeatStructures: true` to draw it
+everywhere. A domain with no glyph of its own takes part in that choice: an
+interchain-cysteine ADC is conjugated to a hinge, which is drawn as a connector.
+Artwork is not mirrored by default; set `structure.mirror: true` if the far-side
+copy may be flipped and you have not given `attachFrom`.
+
+### Producing the artwork — `deneb/chem`
+
+Getting `attach` and `attachFrom` right by hand means reading atom coordinates
+out of a depiction, so there is an entry point that does it:
+
+```ts
+import { Molecule } from 'openchemlib';
+import { structureFromMolecule } from 'deneb/chem';
+
+payload.structure = structureFromMolecule(
+  // Written to start at the atom the antibody is bonded to, and drawn in its
+  // conjugated form — the maleimide already opened by the thiol.
+  Molecule.fromSmiles('SC2CC(=O)N(CCCCCC(=O)N…)C2=O'),
+  { attachAtom: 0, caption: 'mc-Val-Cit-PAB' },
+);
+```
+
+It turns the molecule's own coordinates so the conjugated atom faces the
+antibody — doing it there rather than at draw time means the toolkit lays the
+atom labels out upright for the final angle — renders it, crops away the margin,
+and reads both atom positions straight out of the drawing.
+
+The toolkit is **passed in rather than imported**, so this adds no dependency
+and is not tied to one version of OpenChemLib; `DepictableMolecule` is the
+handful of methods it calls. Any toolkit that marks atoms in its SVG output
+will do.
 
 The same thing in the notation, compound first:
 
