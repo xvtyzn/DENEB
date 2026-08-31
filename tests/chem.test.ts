@@ -25,7 +25,7 @@ describe('structureFromMolecule', () => {
     const angle =
       (Math.atan2((a.y - from.y) * s.height!, (a.x - from.x) * s.width!) * 180) / Math.PI;
     expect(Math.abs(angle)).toBeLessThan(0.5);
-    // ...and the conjugated atom is the end nearest the antibody.
+    // ...and the remote endpoint of the antibody bond is nearest the antibody.
     expect(a.x).toBeGreaterThan(from.x);
   });
 
@@ -67,5 +67,35 @@ describe('structureFromMolecule', () => {
     // The longest side is the one that is set: a tall compound must not come
     // out taller than the antibody it hangs off.
     expect(Math.max(s.width!, s.height!)).toBe(90);
+  });
+
+  it('accounts for the antibody bond when rendering terminal sulfur and nitrogen', () => {
+    const sulfur = structureFromMolecule(molecule('SCC'));
+    const nitrogen = structureFromMolecule(molecule('NC(=O)C'));
+    const text = (svg: string) =>
+      [...svg.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((match) => match[1]).join('');
+
+    expect(text(sulfur.svg!)).not.toContain('H');
+    expect(text(nitrogen.svg!)).toContain('NH');
+    expect(text(nitrogen.svg!)).not.toContain('N2H');
+  });
+
+  it('does not mutate caller-owned coordinates', () => {
+    const input = molecule();
+    const before = Array.from({ length: input.getAllAtoms() }, (_, atom) => ({
+      x: input.getAtomX(atom),
+      y: input.getAtomY(atom),
+    }));
+    structureFromMolecule(input, { side: 'right' });
+    const after = Array.from({ length: input.getAllAtoms() }, (_, atom) => ({
+      x: input.getAtomX(atom),
+      y: input.getAtomY(atom),
+    }));
+    expect(after).toEqual(before);
+  });
+
+  it('removes toolkit hit-target IDs from reusable artwork', () => {
+    const s = structureFromMolecule(molecule());
+    expect(s.svg).not.toContain('id="dn-depiction:');
   });
 });

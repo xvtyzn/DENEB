@@ -153,9 +153,6 @@ export interface DecorateContext {
   clears?: (corners: Point[]) => boolean;
 }
 
-/** How much further the stalk of an inline structure will reach to get clear. */
-const STALK_STEPS = [0, 12, 26, 44, 68];
-
 /** Stalk length before any reaching: the bond, the atom label, the run-in. */
 function baseStalk(label: string): number {
   return 7 + (label ? 9 : 0) + 7;
@@ -172,7 +169,7 @@ function structureBox(
   boxHeight: number,
   extendRight: boolean,
 ): { x: number; y: number; turn: number; mirror: boolean; box: Rect } {
-  const attach = attachFraction(structure, extendRight);
+  const attach = attachFraction(structure, extendRight, boxWidth, boxHeight);
   // Naming the neighbouring atom says which way the molecule runs, so the
   // drawing can be turned to line up with the bond. That supersedes the flip,
   // which only ever guessed at the same thing and inverted stereochemistry to
@@ -208,9 +205,9 @@ function stalkReach(
   const base = baseStalk(attachmentLabel(payload, true));
   const extendRight = dirWorldX(dir, ctx.rotation) >= 0;
   const { box } = structureBox(structure, boxWidth, boxHeight, extendRight);
-  for (const extra of STALK_STEPS) {
+  const clearsAt = (extra: number): boolean => {
     const tip = add(
-      ctx.center,
+      ctx.center!,
       rotate({ x: dir * (ctx.width / 2 + base + extra), y: 0 }, ctx.rotation),
     );
     const corners = [
@@ -219,9 +216,29 @@ function stalkReach(
       { x: tip.x + box.x + box.width, y: tip.y + box.y + box.height },
       { x: tip.x + box.x, y: tip.y + box.y + box.height },
     ];
-    if (ctx.clears(corners)) return extra;
+    return ctx.clears!(corners);
+  };
+  if (clearsAt(0)) return 0;
+
+  // The needed distance is unbounded from the structure's point of view: a
+  // caller may supply artwork much larger than the antibody. Find a clear
+  // upper bound exponentially, then narrow it so the bond is no longer than
+  // the clearance actually requires.
+  let lower = 0;
+  let upper = 12;
+  for (let attempt = 0; attempt < 64; attempt++) {
+    if (clearsAt(upper)) {
+      while (upper - lower > 1) {
+        const middle = (lower + upper) / 2;
+        if (clearsAt(middle)) upper = middle;
+        else lower = middle;
+      }
+      return upper;
+    }
+    lower = upper;
+    upper *= 2;
   }
-  return STALK_STEPS[STALK_STEPS.length - 1]!;
+  throw new Error('inline structure could not be placed clear of the molecule');
 }
 
 export interface DomainDecorations {
@@ -760,19 +777,36 @@ function dirWorldX(dir: 1 | -1, rotation: number): number {
 export function attachFraction(
   structure: NonNullable<Payload['structure']>,
   extendRight: boolean,
+  width = structure.width,
+  height = structure.height,
 ): { x: number; y: number } {
   if (!structure.attach) return { x: extendRight ? 0 : 1, y: 0.5 };
-  return fractionOf(structure, structure.attach);
+  return fractionOf(structure, structure.attach, width, height);
 }
 
 /** A point in the artwork's own coordinates, as a fraction of its box. */
 function fractionOf(
   structure: NonNullable<Payload['structure']>,
   point: { x: number; y: number },
+  width?: number,
+  height?: number,
 ): { x: number; y: number } {
   const box = structure.viewBox?.trim().split(/[\s,]+/).map(Number);
   if (box && box.length === 4 && box[2] && box[3]) {
-    return { x: (point.x - box[0]!) / box[2], y: (point.y - box[1]!) / box[3] };
+    const [vx, vy, vw, vh] = box as [number, number, number, number];
+    if (width && height) {
+      // Nested structure SVGs use `xMidYMid meet`. When the supplied box and
+      // viewBox have different aspect ratios, the artwork is letterboxed rather
+      // than stretched independently on x and y.
+      const scale = Math.min(width / vw, height / vh);
+      const offsetX = (width - vw * scale) / 2;
+      const offsetY = (height - vh * scale) / 2;
+      return {
+        x: (offsetX + (point.x - vx) * scale) / width,
+        y: (offsetY + (point.y - vy) * scale) / height,
+      };
+    }
+    return { x: (point.x - vx) / vw, y: (point.y - vy) / vh };
   }
   return point;
 }
@@ -794,8 +828,8 @@ export function structureTurn(
   extendRight: boolean,
 ): number {
   if (!structure.attach || !structure.attachFrom) return 0;
-  const a = fractionOf(structure, structure.attach);
-  const from = fractionOf(structure, structure.attachFrom);
+  const a = fractionOf(structure, structure.attach, width, height);
+  const from = fractionOf(structure, structure.attachFrom, width, height);
   const ux = (a.x - from.x) * width;
   const uy = (a.y - from.y) * height;
   if (ux === 0 && uy === 0) return 0;

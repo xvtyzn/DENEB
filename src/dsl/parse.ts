@@ -235,6 +235,9 @@ function parseChain(id: string, body: string, lineNo: number): Chain {
       const n = peek();
       if (n.kind !== 'number') throw new DslError(`"*" must be followed by a count`, lineNo, n.pos);
       copies = Number(n.value);
+      if (!Number.isInteger(copies) || copies < 1) {
+        throw new DslError(`chain copy count must be a positive integer`, lineNo, n.pos);
+      }
       i++;
     } else {
       throw new DslError(`unexpected "${t.value}"`, lineNo, t.pos);
@@ -318,8 +321,17 @@ function parsePayload(fields: string[], lineNo: number, pos: number): Payload {
     throw new DslError(`a conjugated payload's name comes first, not "${name}"`, lineNo, pos);
   }
   const payload: Payload = { name };
+  const assigned = new Set<string>();
 
   const set = (key: string, value: string): void => {
+    const canonical = key === 'copies' ? 'count' : key;
+    if (assigned.has(canonical)) {
+      throw new DslError(`payload field "${canonical}" is given more than once`, lineNo, pos);
+    }
+    if (value.length === 0 && key !== 'attachment') {
+      throw new DslError(`payload field "${key}" cannot be empty`, lineNo, pos);
+    }
+    assigned.add(canonical);
     switch (key) {
       case 'linker':
         payload.linker = value;
@@ -334,16 +346,24 @@ function parsePayload(fields: string[], lineNo: number, pos: number): Payload {
         if (!Number.isFinite(n)) {
           throw new DslError(`${key} expects a number, got "${value}"`, lineNo, pos);
         }
-        if (key === 'dar') payload.dar = n;
-        else payload.count = n;
+        if (key === 'dar') {
+          if (n <= 0) throw new DslError(`dar must be greater than zero`, lineNo, pos);
+          payload.dar = n;
+        } else {
+          if (!Number.isInteger(n) || n < 1) {
+            throw new DslError(`count must be a positive integer`, lineNo, pos);
+          }
+          payload.count = n;
+        }
         return;
       }
       case 'cleavable': {
-        const flag = CLEAVABILITY[value.toLowerCase()];
-        if (flag == null && value !== 'true' && value !== 'false') {
+        const normalized = value.toLowerCase();
+        const flag = CLEAVABILITY[normalized];
+        if (flag == null && normalized !== 'true' && normalized !== 'false') {
           throw new DslError(`cleavable expects true or false, got "${value}"`, lineNo, pos);
         }
-        payload.cleavable = flag ?? value === 'true';
+        payload.cleavable = flag ?? normalized === 'true';
         return;
       }
       case 'attachment':
@@ -381,13 +401,13 @@ function parsePayload(fields: string[], lineNo: number, pos: number): Payload {
     }
     const flag = CLEAVABILITY[field.toLowerCase()];
     if (flag != null) {
-      payload.cleavable = flag;
+      set('cleavable', field);
       continue;
     }
     const asNumber = Number(field);
     if (Number.isFinite(asNumber)) {
-      if (payload.dar == null) payload.dar = asNumber;
-      else if (payload.count == null) payload.count = asNumber;
+      if (!assigned.has('dar')) set('dar', field);
+      else if (!assigned.has('count')) set('count', field);
       else {
         throw new DslError(
           `"${field}" has nowhere to go: dar and copies are already given. ` +
@@ -398,8 +418,8 @@ function parsePayload(fields: string[], lineNo: number, pos: number): Payload {
       }
       continue;
     }
-    if (payload.linker == null) payload.linker = field;
-    else if (payload.site == null) payload.site = field;
+    if (!assigned.has('linker')) set('linker', field);
+    else if (!assigned.has('site')) set('site', field);
     else {
       throw new DslError(
         `"${field}" has nowhere to go: linker and site are already given. ` +

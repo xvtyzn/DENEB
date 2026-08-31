@@ -334,6 +334,10 @@ chain. Atom labels are kept upright through the turn. Turning supersedes
 `mirror`: a rotation is a proper transform, so unlike a flip it cannot invert
 stereochemistry or reverse the reading order of a label.
 
+Uprighting labels requires inline `svg` markup. An `href` is intentionally
+opaque, so its pixels rotate together; pre-orient an `href` depiction or use
+trusted inline markup when rotated atom labels must stay level.
+
 A compound is a good deal bigger than the domain it hangs from, so leaving from
 the right edge is not on its own enough: on a tilted Fab arm the drawing can
 still lie back across the antibody. **The bond is what gives way** — it is drawn
@@ -373,15 +377,17 @@ payload.structure = structureFromMolecule(
 the other follows from the shape of the molecule, so a compound that happens to
 be laid out tall does not come out twice the height of the antibody.
 
-It turns the molecule's own coordinates so the conjugated atom faces the
-antibody — doing it there rather than at draw time means the toolkit lays the
-atom labels out upright for the final angle — renders it, crops away the margin,
-and reads both atom positions straight out of the drawing.
+It works on a copy, adds the missing antibody bond while OpenChemLib lays out
+the depiction, and turns that copy so the conjugated atom faces the antibody.
+The added bond makes terminal sulfur and nitrogen render in their conjugated
+valence rather than as free SH or NH2, and makes the bond stop at the atom label
+instead of crossing it. The input molecule and its coordinates are unchanged.
 
-The toolkit is **passed in rather than imported**, so this adds no dependency
-and is not tied to one version of OpenChemLib; `DepictableMolecule` is the
-handful of methods it calls. Any toolkit that marks atoms in its SVG output
-will do.
+The toolkit is **passed in rather than imported**, so this adds no runtime
+dependency and is not tied to one version of OpenChemLib. `DepictableMolecule`
+documents the OpenChemLib-compatible methods used. The SVG reader relies on
+OpenChemLib's `ID:Atom:N` hit-target convention; another toolkit needs an
+adapter that emits the same markers.
 
 The same thing in the notation, compound first:
 
@@ -497,22 +503,23 @@ raw domain id — handy for linking the diagram to a sequence viewer.
 ## Beyond the viewer
 
 Everything past drawing lives behind its own subpath, so a page that only
-renders a diagram never loads any of it. The core entry is 26 kB gzipped and
+renders a diagram never loads any of it. The core entry is about 31 kB gzipped and
 does not reach the presets, the linter, the diff, the importers, or the AbML and
 VERITAS adapters — checked by
 `tests/boundaries.test.ts` in source and by `npm run size` in the built output.
 
 | Import | Gzipped | What it is |
 | --- | --- | --- |
-| `deneb` | 26 kB | model, notation, layout, renderers |
-| `deneb/react` | 30 kB | the components |
-| `deneb/presets` | 11 kB | the 49 bundled formats |
-| `deneb/lint` | 11 kB | design checks |
-| `deneb/diff` | 10 kB | parent/variant comparison |
-| `deneb/panel` | 29 kB | multi-molecule figures |
-| `deneb/import` | 3 kB | ANARCI / IgBLAST adapters |
-| `deneb/abml` | 13 kB | AbML notation, read and written |
-| `deneb/veritas` | 13 kB | VERITAS format names, read and written |
+| `deneb` | 31 kB | model, notation, layout, renderers |
+| `deneb/react` | 34 kB | the components |
+| `deneb/presets` | 12 kB | the 49 bundled formats |
+| `deneb/lint` | 13 kB | design checks |
+| `deneb/diff` | 12 kB | parent/variant comparison |
+| `deneb/panel` | 33 kB | multi-molecule figures |
+| `deneb/import` | 3.5 kB | ANARCI / IgBLAST adapters |
+| `deneb/abml` | 14 kB | AbML notation, read and written |
+| `deneb/veritas` | 15 kB | VERITAS format names, read and written |
+| `deneb/chem` | 2 kB | OpenChemLib depiction adapter |
 
 ### Design checks
 
@@ -808,8 +815,10 @@ InChI, and joined to the antibody by their own chemistry.
 **Every number is checked against its label before the page is written**, so a
 revision that changes a DAR fails the build rather than leaving a stale figure.
 A field the label does not state is left out of the notation rather than filled
-in from elsewhere: fifteen of the sixteen labels do not say which residue the
-linker attaches to, and the pages say so. The one thing no API gives is the list
+in from elsewhere: fourteen of the sixteen labels do not state an attachment
+site. PADCEV names interchain cysteine residues; DECNUPAZ names a site-directed
+heavy-chain process without identifying a residue. The pages do not infer more
+than that. The one thing no API gives is the list
 of products — openFDA has no "list the ADCs" query — so the brand list was
 seeded by asking for labels whose DESCRIPTION says "antibody-drug conjugate" and
 similar, and then read. Products marketed only outside the US are absent for the

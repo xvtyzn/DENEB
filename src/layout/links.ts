@@ -222,13 +222,17 @@ function routeLevelPair(
   );
 }
 
+/** Relative position when two glyphs share an orientation, including ±180 wrap. */
+function alignedOffset(a: PlacedDomain, b: PlacedDomain): Point | null {
+  const delta = ((a.rotation - b.rotation + 540) % 360) - 180;
+  if (Math.abs(delta) > 1) return null;
+  return rotate({ x: b.center.x - a.center.x, y: b.center.y - a.center.y }, -a.rotation);
+}
+
 /** Are the two glyphs shoulder to shoulder, as the halves of an Fv head are? */
 function isBesidePair(prev: PlacedDomain, next: PlacedDomain): boolean {
-  if (Math.abs(prev.rotation - next.rotation) > 1) return false;
-  const local = rotate(
-    { x: next.center.x - prev.center.x, y: next.center.y - prev.center.y },
-    -prev.rotation,
-  );
+  const local = alignedOffset(prev, next);
+  if (!local) return false;
   // Shoulder to shoulder means immediately adjacent. Two domains further apart
   // along the row have something between them, and their strand has to be routed
   // around rather than up the gap.
@@ -322,8 +326,8 @@ export function structuralConnectors(
 
 /** Are these two glyphs drawn as one head -- level, and about a lane apart? */
 function drawnAsPair(a: PlacedDomain, b: PlacedDomain): boolean {
-  if (Math.abs(a.rotation - b.rotation) > 1) return false;
-  const local = rotate({ x: b.center.x - a.center.x, y: b.center.y - a.center.y }, -a.rotation);
+  const local = alignedOffset(a, b);
+  if (!local) return false;
   return Math.abs(local.y) < a.height * 0.35 && Math.abs(local.x) < a.width + b.width;
 }
 

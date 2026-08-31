@@ -5,6 +5,7 @@ import { getPreset } from '../src/presets/index';
 import type { ModificationType, PayloadStructure } from '../src/model/types';
 import { cornersOf, polygonsOverlap, rotate } from '../src/layout/geometry';
 import type { LayoutResult, Point } from '../src/layout/types';
+import { structureTurn } from '../src/render/markers';
 
 describe('conjugated payloads', () => {
   it('parses the compound, linker, DAR, copy count and site from the DSL', () => {
@@ -316,6 +317,26 @@ describe('payload structures', () => {
       const glyph = cornersOf(p.center, p.width, p.height, p.rotation);
       expect(polygonsOverlap(box, glyph), `${p.domain.id} is under the drawing`).toBe(false);
     }
+  });
+
+  it('keeps oversized artwork clear of its own carrier and the rest of the molecule', () => {
+    const { svg, layout: result } = renderConjugate('CH1', drawing(900, 540));
+    const box = structureCorners(svg, result);
+    for (const p of result.domains) {
+      const glyph = cornersOf(p.center, p.width, p.height, p.rotation);
+      expect(polygonsOverlap(box, glyph), `${p.domain.id} is under the drawing`).toBe(false);
+    }
+    expect(bondLength(svg)).toBeGreaterThan(68);
+  });
+
+  it('uses the nested SVG meet scaling when calculating structure rotation', () => {
+    const diagonal: PayloadStructure = {
+      svg: '<circle cx="50" cy="50" r="45"/>',
+      viewBox: '0 0 100 100',
+      attach: { x: 100, y: 100 },
+      attachFrom: { x: 0, y: 0 },
+    };
+    expect(structureTurn(diagonal, 200, 100, false)).toBeCloseTo(-45, 5);
   });
 
   it('can be turned off entirely', () => {

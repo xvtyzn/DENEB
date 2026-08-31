@@ -116,9 +116,10 @@ function expandChains(input: Chain[], diagnostics: Diagnostic[]): Chain[] {
         domains.push({ type: 'linker' });
         domains.push({ ...rest, id: undefined, type: 'VL', modifications });
       } else if (d.type === 'Fab') {
-        const { modifications, ...rest } = d;
-        domains.push({ ...rest, id: undefined, type: 'VH' });
-        domains.push({ ...rest, id: undefined, type: 'CH1', modifications });
+        const { modifications, isotype, ...rest } = d;
+        const heavy = isotype == null ? rest : { ...rest, isotype };
+        domains.push({ ...heavy, id: undefined, type: 'VH' });
+        domains.push({ ...heavy, id: undefined, type: 'CH1', modifications });
         companions.push({ ...rest, id: undefined, type: 'VL' });
         companions.push({ ...rest, id: undefined, type: 'CL' });
       } else {

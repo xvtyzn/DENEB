@@ -4,7 +4,7 @@
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-2f6f5e)](LICENSE)
 ![Node.js >=18](https://img.shields.io/badge/node-%3E%3D18-339933?logo=nodedotjs&logoColor=white)
 ![TypeScript 5.7+](https://img.shields.io/badge/TypeScript-5.7%2B-3178C6?logo=typescript&logoColor=white)
-![Core gzip: 26 kB](https://img.shields.io/badge/core_gzip-26_kB-555555)
+![Core gzip: 31 kB](https://img.shields.io/badge/core_gzip-31_kB-555555)
 
 **D**rawing **E**ngine for **N**otated, **E**ngineered **B**iologics
 
@@ -134,7 +134,7 @@ const { svg } = renderSVG(construct);
 | `deneb/veritas` | VERITAS 名の読み書き |
 | `deneb/chem` | 化合物の作図。抗体を向くように回転させる |
 
-コアは gzip 約 26 kB で、ビューアだけを使うアプリケーションへ任意機能を取り込まない
+コアは gzip 約 31 kB で、ビューアだけを使うアプリケーションへ任意機能を取り込まない
 ことを継続的に検査しています。
 
 ## 試す

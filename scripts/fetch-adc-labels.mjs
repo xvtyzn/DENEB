@@ -51,7 +51,7 @@ const out = {
 for (const brand of BRANDS) {
   const url =
     'https://api.fda.gov/drug/label.json?search=openfda.brand_name:' +
-    `%22${encodeURIComponent(brand)}%22&limit=1`;
+    `%22${encodeURIComponent(brand)}%22&sort=effective_time:desc&limit=1`;
   const response = await fetch(url);
   if (!response.ok) {
     console.log(`${brand.padEnd(10)} no record (HTTP ${response.status})`);

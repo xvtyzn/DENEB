@@ -98,6 +98,27 @@ describe('parseDSL', () => {
     expect(() => parseDSL('HC: CH2[drug=name=MMAE]')).toThrow(/name comes first/);
   });
 
+  it('refuses duplicate or invalid payload quantities', () => {
+    expect(() => parseDSL('HC: CH2[drug=DM1/4/dar=8]')).toThrow(/dar.*more than once/);
+    expect(() => parseDSL('HC: CH2[drug=DM1/count=2/copies=3]')).toThrow(
+      /count.*more than once/,
+    );
+    expect(() => parseDSL('HC: CH2[drug=DM1/dar=-1]')).toThrow(/greater than zero/);
+    expect(() => parseDSL('HC: CH2[drug=DM1/count=-2]')).toThrow(/positive integer/);
+    expect(() => parseDSL('HC: CH2[drug=DM1/count=1.5]')).toThrow(/positive integer/);
+  });
+
+  it('accepts case-insensitive boolean payload fields', () => {
+    const payload = parseDSL('HC: CH2[drug=DM1/cleavable=TRUE]').chains[0]!.domains[0]!
+      .modifications![0]!.payload;
+    expect(payload?.cleavable).toBe(true);
+  });
+
+  it('refuses non-positive or fractional chain copy counts', () => {
+    expect(() => parseDSL('HC: CH2 *0')).toThrow(/positive integer/);
+    expect(() => parseDSL('HC: CH2 *1.5')).toThrow(DslError);
+  });
+
   it('records the isotype of a chain', () => {
     // A chain-level fact the model keeps on its domains. It reads either way
     // round, so the directive may come before or after the chain it names.

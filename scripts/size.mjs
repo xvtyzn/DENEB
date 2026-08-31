@@ -62,18 +62,49 @@ for (const entry of entries) {
   );
 }
 
-// A string that only exists in the preset definitions.
-const PRESET_MARKER = 'VH(CD3)';
 const core = graph(resolve(root, 'dist/index.js'));
-const leaked = core.filter((f) => readFileSync(f, 'utf8').includes(PRESET_MARKER));
+const coreText = core.map((file) => readFileSync(file, 'utf8')).join('\n');
+const optionalMarkers = [
+  ['react', 'antibody-sequence'],
+  ['presets', 'VH(CD3)'],
+  ['lint', 'igg4-fab-arm-exchange'],
+  ['diff', 'chain-removed'],
+  ['panel', 'dn-panel'],
+  ['import', 'IgBLAST called'],
+  ['abml', 'AbML'],
+  ['veritas', 'VERITAS'],
+  ['chem', 'dn-depiction'],
+];
+
+const stale = optionalMarkers.filter(([name, marker]) => {
+  const entry = entries.find((candidate) => candidate.name === name);
+  return !entry || !graph(entry.file).some((file) => readFileSync(file, 'utf8').includes(marker));
+});
+if (stale.length > 0) {
+  console.error(`\nOptional-boundary markers need updating: ${stale.map(([name]) => name).join(', ')}`);
+  process.exit(1);
+}
+
+const leaked = optionalMarkers.filter(([, marker]) => coreText.includes(marker));
 
 if (leaked.length > 0) {
   console.error(
-    `\nThe viewer entry is carrying the preset catalogue again (${leaked
-      .map((f) => f.slice(f.lastIndexOf('/') + 1))
+    `\nThe viewer entry is carrying optional areas again (${leaked
+      .map(([name]) => name)
       .join(', ')}).\n` +
       'Check `manualChunks` in vite.config.ts and the re-exports in src/index.ts.',
   );
   process.exit(1);
 }
-console.log('\nViewer entry is clear of the optional areas.');
+
+const CORE_GZIP_BUDGET = 32 * 1024;
+const coreWeight = weigh(core);
+if (coreWeight.gzip > CORE_GZIP_BUDGET) {
+  console.error(
+    `\nViewer entry is ${coreWeight.gzip} bytes gzipped; budget is ${CORE_GZIP_BUDGET}.`,
+  );
+  process.exit(1);
+}
+console.log(
+  `\nViewer entry is clear of all optional areas and within its ${CORE_GZIP_BUDGET}-byte gzip budget.`,
+);

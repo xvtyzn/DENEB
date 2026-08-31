@@ -360,9 +360,8 @@ function expand(bbox: Rect, points: Point[], padding: number): Rect {
  * gives way: it is drawn longer until the drawing is in the clear, the way a
  * conjugation scheme sets the compound out to one side.
  */
-function clearanceTest(glyphs: GlyphOutline[], own: string): (corners: Point[]) => boolean {
-  return (corners) =>
-    !glyphs.some((g) => g.id !== own && polygonsOverlap(corners, g.corners));
+function clearanceTest(glyphs: GlyphOutline[]): (corners: Point[]) => boolean {
+  return (corners) => !glyphs.some((g) => polygonsOverlap(corners, g.corners));
 }
 
 function domainNode(
@@ -387,7 +386,7 @@ function domainNode(
     showPayloadNames: ctx.showPayloadNames,
     inlineStructures: ctx.showStructures === 'inline' && ctx.inlineAt.has(p.domain.id),
     center: p.center,
-    clears: clearanceTest(ctx.glyphs, p.domain.id),
+    clears: clearanceTest(ctx.glyphs),
   });
   const fill = colors.fill(p.domain);
   const children: SceneNode[] = [];
@@ -563,7 +562,7 @@ function skippedDomainNode(
     showPayloadNames: ctx.showPayloadNames,
     inlineStructures: ctx.inlineStructures,
     center: mid,
-    clears: clearanceTest(ctx.glyphs, domain.id),
+    clears: clearanceTest(ctx.glyphs),
   });
 
   const { minX, minY, maxX, maxY } = decorations.extent;

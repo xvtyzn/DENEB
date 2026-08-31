@@ -41,8 +41,9 @@ const GLYPH = {
 };
 
 /**
- * What each label says, in the fields the notation has. `quotes` are the exact
- * phrases the numbers came from; the build asserts each is really in the label.
+ * What each label says, in the fields the notation has. `quotes` are exact
+ * supporting phrases; `darEvidence` is both the source of the displayed value
+ * and an exact phrase the build requires to be present in the label.
  */
 const PRODUCTS = [
   {
@@ -54,10 +55,10 @@ const PRODUCTS = [
     payload: 'MMAE',
     linker: 'mc-Val-Cit-PABC',
     cleavable: true,
-    dar: 4,
+    darEvidence: { values: [4], quote: 'Approximately 4 molecules of MMAE are attached' },
     moiety: 'vedotin',
     glyph: GLYPH.auristatin,
-    quotes: ['chimeric IgG1 antibody cAC10', 'Approximately 4 molecules of MMAE are attached'],
+    quotes: ['chimeric IgG1 antibody cAC10'],
     note: 'The first of the vedotins, and the only <strong>chimeric</strong> antibody among the auristatin conjugates.',
   },
   {
@@ -69,15 +70,14 @@ const PRODUCTS = [
     payload: 'MMAE',
     linker: 'mc-Val-Cit-PABC',
     cleavable: true,
-    dar: 3.8,
+    darEvidence: { values: [3.8], quote: 'drug-to-antibody ratio of approximately 3.8' },
     site: 'interchain cysteine',
     moiety: 'vedotin',
     glyph: GLYPH.auristatin,
     quotes: [
       'Conjugation takes place on cysteine residues that comprise the interchain disulfide bonds',
-      'drug-to-antibody ratio of approximately 3.8',
     ],
-    note: 'The <strong>only label of the sixteen that says where the linker attaches</strong> — the interchain disulfide cysteines. Everywhere else that field is left out here because no source stated it.',
+    note: 'The <strong>only label of the sixteen that names the attachment residue</strong> — the interchain disulfide cysteines. Decnupaz names a heavy-chain, site-directed process but not an amino-acid residue; the field is otherwise left out.',
   },
   {
     brand: 'POLIVY',
@@ -88,10 +88,10 @@ const PRODUCTS = [
     payload: 'MMAE',
     linker: 'mc-Val-Cit-PABC',
     cleavable: true,
-    dar: 3.5,
+    darEvidence: { values: [3.5], quote: 'An average of 3.5 molecules of MMAE are attached' },
     moiety: 'vedotin',
     glyph: GLYPH.auristatin,
-    quotes: ['An average of 3.5 molecules of MMAE are attached'],
+    quotes: [],
     note: 'Same drug-linker as Adcetris on a B-cell receptor component.',
   },
   {
@@ -103,10 +103,10 @@ const PRODUCTS = [
     payload: 'MMAE',
     linker: 'mc-Val-Cit-PABC',
     cleavable: true,
-    dar: 4,
+    darEvidence: { values: [4], quote: 'carries an average of 4 MMAE molecules' },
     moiety: 'vedotin',
     glyph: GLYPH.auristatin,
-    quotes: ['carries an average of 4 MMAE molecules'],
+    quotes: [],
     note: 'Against a coagulation initiator rather than a lineage marker.',
   },
   {
@@ -118,10 +118,10 @@ const PRODUCTS = [
     payload: 'MMAE',
     linker: 'Val-Cit',
     cleavable: true,
-    dar: 3,
+    darEvidence: { values: [3], quote: 'carries an average of 3 MMAE molecules' },
     moiety: 'vedotin',
     glyph: GLYPH.auristatin,
-    quotes: ['humanized immunoglobulin G1 kappa', 'carries an average of 3 MMAE molecules'],
+    quotes: ['humanized immunoglobulin G1 kappa'],
     note: 'Approved 2025. The lowest DAR of the five vedotins here.',
   },
   {
@@ -134,10 +134,10 @@ const PRODUCTS = [
     payload: 'MMAF',
     linker: 'maleimidocaproyl',
     cleavable: false,
-    dar: 4,
+    darEvidence: { values: [4], quote: 'Approximately 4 molecules of mafodotin are attached' },
     moiety: 'mafodotin',
     glyph: GLYPH.auristatin,
-    quotes: ['afucosylated, humanized immunoglobulin G1', 'Approximately 4 molecules of mafodotin are attached'],
+    quotes: ['afucosylated, humanized immunoglobulin G1'],
     note: 'The label calls the antibody <strong>afucosylated</strong> in its first sentence: the glycan is engineered for FcγRIIIa binding, so the Fc is doing work of its own. A protease-resistant linker, drawn as a broken bond.',
   },
   {
@@ -149,12 +149,11 @@ const PRODUCTS = [
     payload: 'DM1',
     linker: 'MCC',
     cleavable: false,
-    dar: 3.5,
-    site: 'lysine',
+    darEvidence: { values: [3.5], quote: 'average of 3.5 DM1 molecules per antibody' },
     moiety: 'emtansine',
     glyph: GLYPH.maytansinoid,
-    quotes: ['average of 3.5 DM1 molecules per antibody'],
-    note: 'A thioether to the maytansinoid and an amide to a lysine: the NHS ester is gone from the drawing because it is what acylated the lysine.',
+    quotes: ['stable thioether linker MCC'],
+    note: 'The label describes the stable thioether MCC linker and the MCC-DM1 emtansine component. It does not name the antibody residue carrying the linker, so no site is asserted here.',
   },
   {
     brand: 'ELAHERE',
@@ -165,10 +164,10 @@ const PRODUCTS = [
     payload: 'DM4',
     linker: 'sulfo-SPDB',
     cleavable: true,
-    dar: 3.4,
+    darEvidence: { values: [3.4], quote: 'An average of 3.4 molecules of DM4 are attached' },
     moiety: 'soravtansine',
     glyph: GLYPH.maytansinoid,
-    quotes: ['An average of 3.4 molecules of DM4 are attached'],
+    quotes: [],
     note: 'A hindered disulfide, cleaved by the reducing interior of the cell rather than by a protease.',
   },
   {
@@ -180,10 +179,10 @@ const PRODUCTS = [
     payload: 'DXd',
     linker: 'GGFG tetrapeptide',
     cleavable: true,
-    dar: 8,
+    darEvidence: { values: [8], quote: 'Approximately 8 molecules of deruxtecan are attached' },
     moiety: 'deruxtecan',
     glyph: GLYPH.topoisomerase,
-    quotes: ['Approximately 8 molecules of deruxtecan are attached'],
+    quotes: [],
     note: 'Same antibody target as Kadcyla, and more than twice the DAR. Read it against Datroway below: same payload, half the ratio.',
   },
   {
@@ -195,10 +194,10 @@ const PRODUCTS = [
     payload: 'DXd',
     linker: 'GGFG tetrapeptide',
     cleavable: true,
-    dar: 4,
+    darEvidence: { values: [4], quote: 'Approximately 4 molecules of deruxtecan are attached' },
     moiety: 'deruxtecan',
     glyph: GLYPH.topoisomerase,
-    quotes: ['Approximately 4 molecules of deruxtecan are attached'],
+    quotes: [],
     note: 'Approved 2025. The same deruxtecan as Enhertu at DAR 4 — the clearest ratio comparison in the set.',
   },
   {
@@ -210,10 +209,10 @@ const PRODUCTS = [
     payload: 'SN-38',
     linker: 'CL2A carbonate',
     cleavable: true,
-    dar: 7.5,
+    darEvidence: { values: [7, 8], quote: 'on average 7 to 8 molecules of SN-38 per antibody' },
     moiety: 'govitecan',
     glyph: GLYPH.topoisomerase,
-    quotes: ['on average 7 to 8 molecules of SN-38 per antibody'],
+    quotes: [],
     darText: '7 to 8',
     note: 'The highest ratio here, on the same target as Datroway with a different payload and a hydrolysable rather than enzymatic linker.',
   },
@@ -226,10 +225,10 @@ const PRODUCTS = [
     payload: 'SG3199 PBD dimer',
     linker: 'Val-Ala',
     cleavable: true,
-    dar: 2.3,
+    darEvidence: { values: [2.3], quote: 'An average of 2.3 molecules of SG3249 are attached' },
     moiety: 'tesirine',
     glyph: GLYPH.dna,
-    quotes: ['An average of 2.3 molecules of SG3249 are attached'],
+    quotes: [],
     note: 'A DNA cross-linker, not a tubulin binder — and the lowest DAR of the cytotoxic conjugates, which is what a payload this potent buys.',
   },
   {
@@ -242,7 +241,7 @@ const PRODUCTS = [
     payload: 'DGN549C',
     linker: 'sulfonated peptide',
     cleavable: false,
-    dar: 2,
+    darEvidence: { values: [2], quote: 'contains approximately two DGN549C molecules' },
     site: 'heavy chain, site-directed',
     moiety: 'sunirine',
     glyph: GLYPH.dna,
@@ -259,10 +258,13 @@ const PRODUCTS = [
     payload: 'calicheamicin',
     linker: 'AcBut hydrazone',
     cleavable: true,
-    dar: 2.5,
+    darEvidence: {
+      values: [2, 3],
+      quote: 'ranges from predominantly zero to 6, with an average of 2 to 3 moles',
+    },
     moiety: 'ozogamicin',
     glyph: GLYPH.dna,
-    quotes: ['humanized immunoglobulin [Ig] G4', 'ranges from predominantly zero to 6'],
+    quotes: ['humanized immunoglobulin [Ig] G4'],
     darText: 'zero to 6, with an average of 2 to 3',
     note: 'A humanized <strong>IgG4</strong>, so the Fc recruits little effector function. The lint rule says what else comes with that: an IgG4 without S228P can exchange Fab arms.',
   },
@@ -275,10 +277,10 @@ const PRODUCTS = [
     payload: 'calicheamicin',
     linker: 'AcBut hydrazone',
     cleavable: true,
-    dar: 6,
+    darEvidence: { values: [6], quote: 'approximately 6 with a distribution from 2' },
     moiety: 'ozogamicin',
     glyph: GLYPH.dna,
-    quotes: ['subtype 4 (IgG4) kappa antibody', 'approximately 6 with a distribution from 2'],
+    quotes: ['subtype 4 (IgG4) kappa antibody'],
     darText: 'approximately 6, distribution 2–8',
     note: 'The same chemistry as Mylotarg on CD22, and <strong>IgG4</strong> again — but at more than twice the ratio.',
   },
@@ -296,12 +298,40 @@ const PRODUCTS = [
   },
 ];
 
+/** DAR is derived from label evidence, never duplicated as an editable value. */
+function darOf(product) {
+  const values = product.darEvidence?.values;
+  if (!values) return undefined;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+/** Numeric claims explicitly present in one evidence phrase. */
+function statedNumbers(quote) {
+  const numbers = [...quote.matchAll(/\b\d+(?:\.\d+)?\b/g)].map((match) => Number(match[0]));
+  const words = {
+    zero: 0,
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+  };
+  for (const word of quote.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (word in words) numbers.push(words[word]);
+  }
+  return numbers;
+}
+
 /** The notation for one product — generated, so the fields and the DSL agree. */
 function toDSL(product) {
   const fields = [product.payload, product.linker];
-  if (product.dar != null) fields.push(String(product.dar), '1');
+  const dar = darOf(product);
+  if (dar != null) fields.push(String(dar), '1');
   if (product.site) {
-    if (product.dar == null) fields.push(`site=${product.site}`);
+    if (dar == null) fields.push(`site=${product.site}`);
     else fields.push(product.site);
   }
   if (product.cleavable != null) fields.push(product.cleavable ? 'cleavable' : 'noncleavable');
@@ -324,6 +354,19 @@ function verify(product) {
   for (const quote of product.quotes) {
     if (!text.includes(quote.replace(/[‐-―]/g, '-'))) {
       throw new Error(`${product.brand}: the label does not say "${quote}"`);
+    }
+  }
+  if (product.darEvidence) {
+    const { quote, values } = product.darEvidence;
+    if (values.length === 0 || values.some((value) => !Number.isFinite(value) || value <= 0)) {
+      throw new Error(`${product.brand}: invalid DAR evidence`);
+    }
+    if (!text.includes(quote.replace(/[‐-―]/g, '-'))) {
+      throw new Error(`${product.brand}: the DAR evidence is absent: "${quote}"`);
+    }
+    const stated = statedNumbers(quote);
+    if (values.some((value) => !stated.includes(value))) {
+      throw new Error(`${product.brand}: DAR evidence does not state ${values.join(' or ')}`);
     }
   }
   return label;
@@ -359,7 +402,7 @@ const card = (product) => {
     <p class="facts">
       <span>${product.target}</span><span>${product.antibody}</span>
       <span>${product.linker}</span><span>${product.payload}</span>
-      <span>${product.dar != null ? `DAR ${product.darText ?? product.dar}` : 'DAR not stated'}</span>
+      <span>${darOf(product) != null ? `DAR ${product.darText ?? darOf(product)}` : 'DAR not stated'}</span>
       <span>${product.site ?? 'site not stated'}</span>
     </p>
     <p>${product.note}</p>
@@ -372,6 +415,8 @@ const card = (product) => {
     </details>
   </figure>`;
 };
+
+const siteNotStated = PRODUCTS.filter((product) => !product.site).length;
 
 const html = `<!doctype html>
 <meta charset="utf-8">
@@ -416,7 +461,8 @@ const html = `<!doctype html>
   <strong>Every number is checked against the label before this page is written</strong>,
   so a revision that changes a DAR fails the build rather than leaving a stale
   figure here. A field the label does not state is left out of the notation
-  rather than filled in from elsewhere — which is why fifteen of the sixteen say
+  rather than filled in from elsewhere — which is why ${siteNotStated} of the
+  ${PRODUCTS.length} say
   <em>site not stated</em>, and why the drug mark sits on CH2 throughout: that is
   where the diagram puts it, not a claim about which residue carries the linker.
   Products marketed only outside the US are absent because this API does not

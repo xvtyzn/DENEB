@@ -115,6 +115,15 @@ describe('chain materialisation', () => {
       'CH3',
     ]);
   });
+
+  it('does not copy a heavy-chain isotype onto a Fab macro light chain', () => {
+    const n = of('HC: Fab(A)-h-CH2-CH3\n@isotype HC=IgG4');
+    expect(n.chains.find((chain) => chain.id === 'HC')!.domains.every((d) => d.isotype === 'IgG4'))
+      .toBe(true);
+    expect(
+      n.chains.find((chain) => chain.id === 'HC-L')!.domains.every((d) => d.isotype == null),
+    ).toBe(true);
+  });
 });
 
 describe('diagnostics', () => {

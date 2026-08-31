@@ -35,6 +35,11 @@ export interface DepictableMolecule {
   getAllConnAtoms(atom: number): number;
   getConnAtom(atom: number, index: number): number;
   toSVG(width: number, height: number, id?: string, options?: Record<string, unknown>): string;
+  /** OpenChemLib-compatible helpers used to account for the antibody bond. */
+  getCompactCopy?(): DepictableMolecule;
+  addAtom?(atomicNo: number): number;
+  addBond?(atom1: number, atom2: number): number;
+  inventCoordinates?(): void;
 }
 
 export interface DepictionOptions {
@@ -98,33 +103,119 @@ export function structureFromMolecule(
     throw new DepictionError(`atom ${attachAtom} is not in this molecule`);
   }
   const inner = bodyNeighbour(molecule, attachAtom, options.attachTo);
-  orient(molecule, attachAtom, inner, options.side ?? 'left');
+  const prepared = withExternalBond(molecule, attachAtom, inner);
+  const coordinates = snapshotCoordinates(prepared.molecule);
+  orient(
+    prepared.molecule,
+    prepared.anchorAtom,
+    prepared.attachAtom,
+    options.side ?? 'left',
+  );
 
   const canvas = options.renderSize ?? { width: 420, height: 290 };
   const id = `dn-depiction`;
-  const full = molecule.toSVG(canvas.width, canvas.height, id, {
-    ...DEFAULT_DEPICTION,
-    ...options.depiction,
-  });
+  let full: string;
+  try {
+    full = prepared.molecule.toSVG(canvas.width, canvas.height, id, {
+      ...DEFAULT_DEPICTION,
+      ...options.depiction,
+    });
+  } finally {
+    restoreCoordinates(prepared.molecule, coordinates);
+  }
   // The toolkit's own <svg> wrapper is dropped: the diagram supplies one, sized
   // to the box it reserves and cropped to the drawing, so the bond meets the
   // molecule rather than a margin.
-  const markup = full.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
-  const box = tightBox(markup, options.pad ?? 6);
+  const identifiedMarkup = full.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+  const box = tightBox(identifiedMarkup, options.pad ?? 6);
 
-  const attach = atomPoint(markup, id, attachAtom);
+  const attach = atomPoint(identifiedMarkup, id, prepared.anchorAtom);
   const size = options.size ?? 150;
   const scale = size / Math.max(box.width, box.height);
   const structure: PayloadStructure = {
-    svg: markup,
+    // Hit-target IDs are only needed while locating atoms. Keeping the fixed
+    // OpenChemLib namespace would duplicate IDs when a structure is repeated.
+    svg: stripDepictionIds(identifiedMarkup, id),
     viewBox: `${round(box.x)} ${round(box.y)} ${round(box.width)} ${round(box.height)}`,
     width: Math.round(box.width * scale),
     height: Math.round(box.height * scale),
     attach,
   };
-  if (inner != null) structure.attachFrom = atomPoint(markup, id, inner);
+  if (prepared.attachAtom != null) {
+    structure.attachFrom = atomPoint(identifiedMarkup, id, prepared.attachAtom);
+  }
   if (options.caption) structure.caption = options.caption;
   return structure;
+}
+
+interface PreparedMolecule {
+  molecule: DepictableMolecule;
+  /** Where DENEB's bond ends. */
+  anchorAtom: number;
+  /** The real atom in the compound that the antibody bond enters. */
+  attachAtom: number | null;
+}
+
+/**
+ * Give the renderer the external bond that is absent from an isolated reagent.
+ *
+ * OpenChemLib otherwise completes a terminal sulfur or nitrogen with hydrogen,
+ * producing SH or NH2. An unlabeled carbon is used only as the remote endpoint
+ * of the antibody bond; its line continues DENEB's stalk and makes the toolkit
+ * reserve the correct valence and label clearance at the real attachment atom.
+ */
+function withExternalBond(
+  molecule: DepictableMolecule,
+  attachAtom: number,
+  inner: number | null,
+): PreparedMolecule {
+  const copy = molecule.getCompactCopy?.();
+  if (copy?.addAtom && copy.addBond && copy.inventCoordinates) {
+    const anchorAtom = copy.addAtom(6);
+    copy.addBond(anchorAtom, attachAtom);
+    copy.inventCoordinates();
+    // Coordinate invention knows the new bond exists but not which branch the
+    // caller considers the body. Put its remote endpoint opposite that branch
+    // so `attachTo` retains its documented meaning for multi-connected atoms.
+    if (inner != null) {
+      const dx = copy.getAtomX(attachAtom) - copy.getAtomX(inner);
+      const dy = copy.getAtomY(attachAtom) - copy.getAtomY(inner);
+      const bodyLength = Math.hypot(dx, dy);
+      const anchorLength =
+        Math.hypot(
+          copy.getAtomX(anchorAtom) - copy.getAtomX(attachAtom),
+          copy.getAtomY(anchorAtom) - copy.getAtomY(attachAtom),
+        ) || bodyLength;
+      if (bodyLength > 0 && anchorLength > 0) {
+        copy.setAtomX(anchorAtom, copy.getAtomX(attachAtom) + (dx / bodyLength) * anchorLength);
+        copy.setAtomY(anchorAtom, copy.getAtomY(attachAtom) + (dy / bodyLength) * anchorLength);
+      }
+    }
+    return { molecule: copy, anchorAtom, attachAtom };
+  }
+  return { molecule, anchorAtom: attachAtom, attachAtom: inner };
+}
+
+function snapshotCoordinates(molecule: DepictableMolecule): Array<{ x: number; y: number }> {
+  return Array.from({ length: molecule.getAllAtoms() }, (_, atom) => ({
+    x: molecule.getAtomX(atom),
+    y: molecule.getAtomY(atom),
+  }));
+}
+
+function restoreCoordinates(
+  molecule: DepictableMolecule,
+  coordinates: Array<{ x: number; y: number }>,
+): void {
+  coordinates.forEach(({ x, y }, atom) => {
+    molecule.setAtomX(atom, x);
+    molecule.setAtomY(atom, y);
+  });
+}
+
+function stripDepictionIds(markup: string, id: string): string {
+  const pattern = new RegExp(`\\s+id="${escapeRe(id)}:[^"]*"`, 'g');
+  return markup.replace(pattern, '');
 }
 
 /** The neighbour that stands for the rest of the molecule. */
