@@ -1,7 +1,7 @@
 {
   "name": "deneb",
   "version": "0.1.0",
-  "description": "DENEB — Drawing Engine for Notated, Engineered Biologics. Declarative SVG diagrams of antibody formats: bispecific and multispecific architectures, domains coloured by specificity, engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs), ADC conjugation, and the AbML and VERITAS notations.",
+  "description": "DENEB \u2014 Drawing Engine for Notated, Engineered Biologics. Declarative SVG diagrams of antibody formats: bispecific and multispecific architectures, domains coloured by specificity, engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs), ADC conjugation, and the AbML and VERITAS notations.",
   "author": "Keigo Ide <keigo.ide@aoni.waseda.jp>",
   "repository": {
     "type": "git",
@@ -103,6 +103,7 @@
     "playground": "vite build && vite preview --outDir . --port 5174 --open /examples/playground.html",
     "prepublishOnly": "npm run build",
     "adc-demo": "vite build && node scripts/adc-demo.mjs",
+    "adc-approved": "vite build && node scripts/adc-approved.mjs",
     "size": "vite build && node scripts/size.mjs",
     "check-exports": "vite build && node scripts/check-exports.mjs",
     "constant-regions": "node scripts/fetch-constant-regions.mjs",

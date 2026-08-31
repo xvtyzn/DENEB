@@ -769,6 +769,7 @@ npm run playground   # build, then serve and open examples/playground.html
 npm run readme-images  # rebuild docs/images/ (needs Playwright for the PNGs)
 npm run gallery      # build, then write examples/gallery.html
 npm run adc-demo     # build, then write examples/adc.html
+npm run adc-approved # build, then write examples/adc-approved.html
 npm run panel-demo   # build, then write examples/panel.html
 npm run size         # what each entry point costs, and a check that the
                      # viewer has not picked the optional areas back up
@@ -783,6 +784,14 @@ SMILES string into a depiction with OpenChemLib — a devDependency of this repo
 never of the library — and hands the result to `payload.structure`. The molecules
 it ships are example stand-ins; swap in your payload's SMILES and the drawings
 follow.
+
+`scripts/adc-approved.mjs` writes twelve marketed ADCs in the notation and
+prints each string under its own picture. Target, linker, payload and
+cleavability are cited on every card. **The drug-to-antibody ratio and the
+conjugation site appear on two of them only** — those are the two the cited
+sources state them for, and the rest leave the fields out rather than assert a
+number. For the same reason the drug mark sits on CH2 throughout: that is where
+the diagram puts it, not a claim about which residue carries the linker.
 
 ## Prior art
 

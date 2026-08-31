@@ -597,6 +597,7 @@ npm run playground   # ビルドして examples/playground.html をサーバ経�
 npm run readme-images  # docs/images/ を再生成（PNG 化に Playwright が要る）
 npm run gallery      # ビルドして examples/gallery.html を生成
 npm run adc-demo     # ビルドして examples/adc.html を生成
+npm run adc-approved # ビルドして examples/adc-approved.html を生成
 npm run panel-demo   # ビルドして examples/panel.html を生成
 npm run size         # 各エントリの実サイズと、コアが optional 領域を
                      # 抱え込んでいないかの検査
@@ -611,6 +612,11 @@ OpenChemLib（このリポジトリの devDependency であり、ライブラリ
 で描画に変換し、`payload.structure` に渡しています。同梱している分子は
 **例示用のスタンドイン**です。ご自身のペイロードの SMILES に差し替えれば図もそのまま
 追随します。
+
+`scripts/adc-approved.mjs` は上市 ADC 12 品目を DSL で書き、記法を図の下に並べて
+出力します。標的・リンカー・ペイロード・開裂性はカードごとに出典を引いています。
+**DAR と結合部位は 2 品目にしか書いていません** — 出典がその 2 つにしか記載して
+いないからで、残りは数値を主張せずフィールドごと省いています。
 
 ## 関連する先行事例
 

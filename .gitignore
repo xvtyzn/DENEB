@@ -1,10 +1,11 @@
 node_modules/
 dist/
 
-# Written by npm run gallery / adc-demo / panel-demo. The page that is source,
-# examples/playground.html, is tracked; these three are output.
+# Written by npm run gallery / adc-demo / adc-approved / panel-demo. The page
+# that is source, examples/playground.html, is tracked; these four are output.
 examples/gallery.html
 examples/adc.html
+examples/adc-approved.html
 examples/panel.html
 
 *.log
