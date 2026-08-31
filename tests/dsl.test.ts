@@ -98,6 +98,23 @@ describe('parseDSL', () => {
     expect(() => parseDSL('HC: CH2[drug=name=MMAE]')).toThrow(/name comes first/);
   });
 
+  it('records the isotype of a chain', () => {
+    // A chain-level fact the model keeps on its domains. It reads either way
+    // round, so the directive may come before or after the chain it names.
+    for (const source of [
+      'HC: VH(A)-CH1-h-CH2-CH3\n@isotype HC=IgG4',
+      '@isotype HC=IgG4\nHC: VH(A)-CH1-h-CH2-CH3',
+    ]) {
+      const c = parseDSL(source);
+      expect(c.chains[0]!.domains.every((d) => d.isotype === 'IgG4'), source).toBe(true);
+    }
+  });
+
+  it('refuses an isotype for a chain that is not there', () => {
+    expect(() => parseDSL('HC: VH(A)-CH1\n@isotype LC=IgG4')).toThrow(/names no chain/);
+    expect(() => parseDSL('HC: VH(A)-CH1\n@isotype HC')).toThrow(/CHAIN=IgG1/);
+  });
+
   it('records @pair and @ss as explicit links', () => {
     const c = parseDSL(`
       A: VH(x)~VL(y)
@@ -144,6 +161,12 @@ describe('stringifyDSL', () => {
     // front of it has to be written out.
     expect(stringifyDSL(parseDSL('C1: CH2[drug=DM1/site=lysine/copies=2]'))).toBe(
       'C1: CH2[drug=DM1/copies=2/site=lysine]',
+    );
+  });
+
+  it('round-trips an isotype', () => {
+    expect(stringifyDSL(parseDSL('C1: CH2-CH3\n@isotype C1=IgG4'))).toBe(
+      'C1: CH2-CH3\n@isotype C1=IgG4',
     );
   });
 

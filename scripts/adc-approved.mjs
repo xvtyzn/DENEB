@@ -27,6 +27,13 @@ const SOURCES = {
     '<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10458257/">Pharmaceutics 2023</a>',
   kadcylaLabel:
     '<a href="https://api.fda.gov/drug/label.json?search=openfda.brand_name:%22KADCYLA%22">FDA label, DESCRIPTION</a>',
+  belantamab:
+    '<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8805802/">Ann Pharmacother 2022 (afucosylation)</a>',
+  gemtuzumab:
+    '<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6661897/">Ther Adv Hematol 2019 (IgG4)</a>',
+  inotuzumab:
+    '<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6458768/">Ther Adv Hematol 2019 (IgG4)</a>',
+  pubchem: '<a href="https://pubchem.ncbi.nlm.nih.gov/">PubChem</a>',
 };
 
 /**
@@ -48,12 +55,12 @@ const PRODUCTS = [
     note:
       'The one product here whose label states the numbers: humanized anti-HER2 IgG1, ' +
       'MCC linker, an average of 3.5 DM1 per antibody, conjugated to lysines. ' +
-      'A non-cleavable linker draws a broken bond.',
+      'The NHS ester is gone in the drawing — it is what acylated the lysine.',
     cite: [SOURCES.kadcylaLabel, SOURCES.pharmaceutics2023],
-    linker: 'SMCC',
+    moiety: 'emtansine',
     dsl: `
       @name Kadcyla (ado-trastuzumab emtansine)
-      HC: VH(HER2)-CH1-h-CH2[drug=DM1/SMCC/3.5/1/lysine/noncleavable/${CLASS_GLYPH.maytansinoid}]-CH3 *2
+      HC: VH(HER2)-CH1-h-CH2[drug=DM1/MCC/3.5/1/lysine/noncleavable/${CLASS_GLYPH.maytansinoid}]-CH3 *2
       LC: VL(HER2)-CL *2
     `,
   },
@@ -62,7 +69,7 @@ const PRODUCTS = [
     inn: 'brentuximab vedotin',
     note: 'Anti-CD30, the mc-Val-Cit-PABC dipeptide linker, MMAE. Cleavable.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
-    linker: 'mc-Val-Cit-PAB',
+    moiety: 'vedotin',
     dsl: `
       @name Adcetris (brentuximab vedotin)
       HC: VH(CD30)-CH1-h-CH2[drug=MMAE/mc-Val-Cit-PABC/cleavable/${CLASS_GLYPH.auristatin}]-CH3 *2
@@ -74,7 +81,7 @@ const PRODUCTS = [
     inn: 'fam-trastuzumab deruxtecan',
     note: 'Anti-HER2, a cleavable GGFG tetrapeptide linker, the topoisomerase I inhibitor DXd.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
-    linker: 'GGFG',
+    moiety: 'deruxtecan',
     dsl: `
       @name Enhertu (fam-trastuzumab deruxtecan)
       HC: VH(HER2)-CH1-h-CH2[drug=DXd/GGFG tetrapeptide/cleavable/${CLASS_GLYPH.topoisomerase}]-CH3 *2
@@ -84,8 +91,9 @@ const PRODUCTS = [
   {
     brand: 'Trodelvy',
     inn: 'sacituzumab govitecan',
-    note: 'Anti-TROP-2, the cleavable CL2A carbonate linker, SN-38. No structure supplied here.',
+    note: 'Anti-TROP-2, the cleavable CL2A carbonate linker, SN-38.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
+    moiety: 'govitecan',
     dsl: `
       @name Trodelvy (sacituzumab govitecan)
       HC: VH(TROP-2)-CH1-h-CH2[drug=SN-38/CL2A carbonate/cleavable/${CLASS_GLYPH.topoisomerase}]-CH3 *2
@@ -97,7 +105,7 @@ const PRODUCTS = [
     inn: 'enfortumab vedotin',
     note: 'Anti-Nectin-4, mc-Val-Cit-PABC, MMAE — the same chemistry as Adcetris on a different target.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
-    linker: 'mc-Val-Cit-PAB',
+    moiety: 'vedotin',
     dsl: `
       @name Padcev (enfortumab vedotin)
       HC: VH(Nectin-4)-CH1-h-CH2[drug=MMAE/mc-Val-Cit-PABC/cleavable/${CLASS_GLYPH.auristatin}]-CH3 *2
@@ -109,6 +117,7 @@ const PRODUCTS = [
     inn: 'polatuzumab vedotin',
     note: 'Anti-CD79b, mc-Val-Cit-PABC, MMAE.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
+    moiety: 'vedotin',
     dsl: `
       @name Polivy (polatuzumab vedotin)
       HC: VH(CD79b)-CH1-h-CH2[drug=MMAE/mc-Val-Cit-PABC/cleavable/${CLASS_GLYPH.auristatin}]-CH3 *2
@@ -120,6 +129,7 @@ const PRODUCTS = [
     inn: 'tisotumab vedotin',
     note: 'Anti-tissue-factor, mc-Val-Cit-PABC, MMAE.',
     cite: [SOURCES.antibodies2023],
+    moiety: 'vedotin',
     dsl: `
       @name Tivdak (tisotumab vedotin)
       HC: VH(Tissue factor)-CH1-h-CH2[drug=MMAE/mc-Val-Cit-PABC/cleavable/${CLASS_GLYPH.auristatin}]-CH3 *2
@@ -129,11 +139,15 @@ const PRODUCTS = [
   {
     brand: 'Blenrep',
     inn: 'belantamab mafodotin',
-    note: 'Anti-BCMA with a non-cleavable maleimidocaproyl linker and MMAF: the broken bond again.',
-    cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
+    note:
+      'Anti-BCMA, a non-cleavable maleimidocaproyl linker and MMAF. The antibody is ' +
+      'engineered too: it is <strong>afucosylated</strong>, which raises its affinity for ' +
+      'FcγRIIIa and so its ADCC — the branched stub on the Fc.',
+    cite: [SOURCES.antibodies2023, SOURCES.belantamab],
+    moiety: 'mafodotin',
     dsl: `
       @name Blenrep (belantamab mafodotin)
-      HC: VH(BCMA)-CH1-h-CH2[drug=MMAF/maleimidocaproyl/noncleavable/${CLASS_GLYPH.auristatin}]-CH3 *2
+      HC: VH(BCMA)-CH1-h-CH2[afucosyl, drug=MMAF/maleimidocaproyl/noncleavable/${CLASS_GLYPH.auristatin}]-CH3 *2
       LC: VL(BCMA)-CL *2
     `,
   },
@@ -142,6 +156,7 @@ const PRODUCTS = [
     inn: 'mirvetuximab soravtansine',
     note: 'Anti-folate-receptor-α, the cleavable hydrophilic disulfide sulfo-SPDB, DM4.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
+    moiety: 'soravtansine',
     dsl: `
       @name Elahere (mirvetuximab soravtansine)
       HC: VH(FRalpha)-CH1-h-CH2[drug=DM4/sulfo-SPDB/cleavable/${CLASS_GLYPH.maytansinoid}]-CH3 *2
@@ -153,6 +168,7 @@ const PRODUCTS = [
     inn: 'loncastuximab tesirine',
     note: 'Anti-CD19, a cleavable Val-Ala dipeptide, the pyrrolobenzodiazepine dimer SG3199 — a DNA cross-linker, not a tubulin binder.',
     cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
+    moiety: 'tesirine',
     dsl: `
       @name Zynlonta (loncastuximab tesirine)
       HC: VH(CD19)-CH1-h-CH2[drug=PBD dimer/Val-Ala/cleavable/${CLASS_GLYPH.dna}]-CH3 *2
@@ -163,24 +179,30 @@ const PRODUCTS = [
     brand: 'Mylotarg',
     inn: 'gemtuzumab ozogamicin',
     note:
-      'Anti-CD33 with a hydrazone linker and N-acetyl-γ-calicheamicin. The other product ' +
-      'here whose conjugation is stated: lysine, DAR 3.',
-    cite: [SOURCES.antibodies2023],
+      'Anti-CD33 with a hydrazone linker and N-acetyl-γ-calicheamicin, lysine-conjugated, ' +
+      'DAR 3. The antibody is a humanized <strong>IgG4</strong> — chosen so it does not ' +
+      'recruit effector function. The lint rule flags what comes with that: an IgG4 ' +
+      'without S228P can exchange Fab arms.',
+    cite: [SOURCES.antibodies2023, SOURCES.gemtuzumab],
+    moiety: 'ozogamicin',
     dsl: `
       @name Mylotarg (gemtuzumab ozogamicin)
       HC: VH(CD33)-CH1-h-CH2[drug=calicheamicin/hydrazone/3/1/lysine/cleavable/${CLASS_GLYPH.dna}]-CH3 *2
       LC: VL(CD33)-CL *2
+      @isotype HC=IgG4
     `,
   },
   {
     brand: 'Besponsa',
     inn: 'inotuzumab ozogamicin',
-    note: 'Anti-CD22, the same hydrazone / N-acetyl-γ-calicheamicin chemistry on a different target.',
-    cite: [SOURCES.antibodies2023, SOURCES.pharmaceutics2023],
+    note: 'Anti-CD22, the same hydrazone / N-acetyl-γ-calicheamicin chemistry, and a humanized <strong>IgG4</strong> again.',
+    cite: [SOURCES.antibodies2023, SOURCES.inotuzumab],
+    moiety: 'ozogamicin',
     dsl: `
       @name Besponsa (inotuzumab ozogamicin)
       HC: VH(CD22)-CH1-h-CH2[drug=calicheamicin/hydrazone/cleavable/${CLASS_GLYPH.dna}]-CH3 *2
       LC: VL(CD22)-CL *2
+      @isotype HC=IgG4
     `,
   },
 ];
@@ -191,13 +213,15 @@ const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').repla
 
 const build = (product) => {
   const construct = parseDSL(product.dsl);
-  if (product.linker) {
-    const structure = structureFor(product.linker);
-    for (const chain of construct.chains) {
-      for (const domain of chain.domains) {
-        for (const m of domain.modifications ?? []) {
-          if (m.payload) m.payload.structure = structure;
-        }
+  // Drawn to the right of the antibody, always, so the twelve can be read
+  // against each other: same place, same direction, same bond.
+  const { structure, attachment } = structureFor(product.moiety, { side: 'right' });
+  for (const chain of construct.chains) {
+    for (const domain of chain.domains) {
+      for (const m of domain.modifications ?? []) {
+        if (!m.payload) continue;
+        m.payload.structure = structure;
+        m.payload.attachment = attachment;
       }
     }
   }
@@ -208,7 +232,7 @@ const card = (product) => `
   <figure class="card">
     <h2>${product.brand} <span class="inn">${product.inn}</span></h2>
     <p>${product.note}</p>
-    <div class="cartoon">${renderSVG(build(product), { scale: 1.4 }).svg}</div>
+    <div class="cartoon">${renderSVG(build(product), { scale: 1.15, showStructures: 'inline' }).svg}</div>
     <pre>${escape(trim(product.dsl))}</pre>
     <p class="cite">${product.cite.join(' · ')}</p>
   </figure>`;
@@ -239,10 +263,14 @@ const html = `<!doctype html>
 <h1>Marketed ADCs, written in the notation</h1>
 <p class="lede">
   Each of these is one <code>parseDSL</code> string, printed under its own
-  picture. Target, linker, payload and cleavability come from the sources cited
-  on each card; the payload glyph is shaped by class — hexagon for an auristatin,
-  diamond for a maytansinoid, circle for a topoisomerase I inhibitor, star for a
-  DNA-damaging agent — which is presentation, not a claim.
+  picture, with the linker-payload drawn out to the right of the antibody and
+  bonded to the atom that actually carries it. The moieties are the INN suffixes
+  — the <code>-vedotin</code> of brentuximab vedotin is mc-Val-Cit-PAB-MMAE —
+  fetched from ${SOURCES.pubchem} by CID, then joined to the antibody the way
+  their own chemistry joins: a maleimide is opened by a cysteine thiol and the
+  sulfur that arrives carries the bond; a succinimidyl ester and a free acid
+  lose their leaving group and acylate a lysine. Target, linker, payload and
+  cleavability come from the sources cited on each card.
 </p>
 <p class="caveat">
   <strong>What is deliberately missing.</strong> The drug-to-antibody ratio and
@@ -252,7 +280,9 @@ const html = `<!doctype html>
   reason the drug mark is drawn on CH2 throughout: that is where the diagram puts
   it, not a claim about which residue carries the linker. Fill in
   <code>dar=</code> and <code>site=</code> from the product's own label when you
-  need them.
+  need them. Two of the twelve carry engineering on the antibody as well —
+  Blenrep is afucosylated, Mylotarg and Besponsa are IgG4 — and those are cited
+  where they appear.
 </p>
 <div class="grid">${PRODUCTS.map(card).join('')}</div>
 <pre>// The shape of the antibody, the payload, the linker, the DAR, the number of

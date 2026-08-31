@@ -319,12 +319,24 @@ function extentOf(
     if (structure) {
       const w = structure.width ?? STRUCTURE_SIZE.width;
       const h = structure.height ?? STRUCTURE_SIZE.height;
-      // The depiction is drawn upright whatever the domain's angle, so reserve
-      // the same room in every direction from where the bond ends.
-      // The bond, the attachment atom, the drawing, its brackets and the
-      // "n = DAR" that follows them all have to fit.
-      const span = Math.max(w, h);
-      grow(dir, 34 + span + (reach.get(r) ?? 0), span / 2 + (ctx.showPayloadNames ? 22 : 12));
+      const extendRight = dirWorldX(dir, ctx.rotation) >= 0;
+      const { box: drawn } = structureBox(structure, w, h, extendRight);
+      // The drawing stays upright whatever the domain's angle, so its corners
+      // come back into the glyph's own frame to be reserved. Measuring the box
+      // rather than guessing from its longest side is what stops a tall
+      // compound being cropped through its own chemistry, and stops a wide one
+      // reserving a page of blank paper underneath.
+      const tip = dir * (ctx.width / 2 + baseStalk(attachmentLabel(r.payload, true)) + (reach.get(r) ?? 0));
+      const pad = ctx.showPayloadNames ? 16 : 6;
+      for (const x of [drawn.x - 4, drawn.x + drawn.width + 4]) {
+        for (const y of [drawn.y - 4, drawn.y + drawn.height + pad]) {
+          const local = rotate({ x, y }, -ctx.rotation);
+          box.minX = Math.min(box.minX, tip + local.x);
+          box.maxX = Math.max(box.maxX, tip + local.x);
+          box.minY = Math.min(box.minY, local.y);
+          box.maxY = Math.max(box.maxY, local.y);
+        }
+      }
     } else if (r.marker === 'drug') {
       const name = ctx.showPayloadNames ? (r.payload?.name.length ?? 0) * 5 + 6 : 0;
       grow(dir, 24 + name, 10);

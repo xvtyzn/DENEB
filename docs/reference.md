@@ -131,7 +131,12 @@ Domain names are case-insensitive: `VH VL VHH CH1 CL CH2 CH3 CH4 h`(inge)
 with its own name, so novel building blocks still show up.
 
 Directives: `@name`, `@color TARGET=#rrggbb`, `@skeleton y|row`, `@arm <degrees>`,
-`@armmode splayed|crossed`, `@pair A:0 B:2`, `@ss A:2 B:0`.
+`@armmode splayed|crossed`, `@pair A:0 B:2`, `@ss A:2 B:0`,
+`@isotype HC=IgG4`.
+
+`@isotype` names a chain, and may come before or after it. It is what the
+`igg4-fab-arm-exchange` lint rule reads, and what the diff reports when a
+variant changes subclass.
 
 ### Saying which domains pair
 
@@ -770,6 +775,7 @@ npm run readme-images  # rebuild docs/images/ (needs Playwright for the PNGs)
 npm run gallery      # build, then write examples/gallery.html
 npm run adc-demo     # build, then write examples/adc.html
 npm run adc-approved # build, then write examples/adc-approved.html
+npm run moieties     # refetch scripts/lib/moieties.json from PubChem
 npm run panel-demo   # build, then write examples/panel.html
 npm run size         # what each entry point costs, and a check that the
                      # viewer has not picked the optional areas back up
@@ -786,7 +792,13 @@ it ships are example stand-ins; swap in your payload's SMILES and the drawings
 follow.
 
 `scripts/adc-approved.mjs` writes twelve marketed ADCs in the notation and
-prints each string under its own picture. Target, linker, payload and
+prints each string under its own picture, with the whole linker-payload drawn
+out to the right of the antibody. Those moieties are the INN suffixes — the
+`-vedotin` of brentuximab vedotin *is* mc-Val-Cit-PAB-MMAE — fetched from
+PubChem by `npm run moieties`, which checks each record's formula against its
+own InChI, and joined to the antibody by their own chemistry: a maleimide is
+opened by a cysteine thiol, a succinimidyl ester and a free acid lose their
+leaving group and acylate a lysine. Nothing here is a SMILES anyone typed out. Target, linker, payload and
 cleavability are cited on every card. **The drug-to-antibody ratio and the
 conjugation site appear on two of them only** — those are the two the cited
 sources state them for, and the rest leave the fields out rather than assert a

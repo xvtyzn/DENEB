@@ -95,7 +95,14 @@ export function stringifyDSL(construct: Construct): string {
   for (const s of construct.specificities ?? []) {
     if (s.color) lines.push(`@color ${s.name}=${s.color}`);
   }
-  for (const chain of construct.chains ?? []) lines.push(chainToDSL(chain));
+  for (const chain of construct.chains ?? []) {
+    lines.push(chainToDSL(chain));
+    // Written out only when the whole chain agrees, which is the only shape the
+    // directive can express.
+    const isotypes = new Set((chain.domains ?? []).map((d) => d.isotype));
+    const [only] = [...isotypes];
+    if (isotypes.size === 1 && only) lines.push(`@isotype ${chain.id}=${only}`);
+  }
   for (const l of construct.links ?? []) {
     if (l.type === 'pair') lines.push(`@pair ${l.a} ${l.b}`);
     else if (l.type === 'disulfide') lines.push(`@ss ${l.a} ${l.b}`);

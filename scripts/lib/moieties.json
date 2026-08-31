@@ -1,0 +1,62 @@
+{
+  "fetched": "2026-08-31",
+  "source": "PubChem PUG REST",
+  "moieties": {
+    "vedotin": {
+      "cid": 46944733,
+      "what": "mc-Val-Cit-PAB-MMAE",
+      "join": "maleimide",
+      "formula": "C68H105N11O15",
+      "smiles": "CC[C@H](C)[C@@H]([C@@H](CC(=O)N1CCC[C@H]1[C@@H]([C@@H](C)C(=O)N[C@H](C)[C@H](C2=CC=CC=C2)O)OC)OC)N(C)C(=O)[C@H](C(C)C)NC(=O)[C@H](C(C)C)N(C)C(=O)OCC3=CC=C(C=C3)NC(=O)[C@H](CCCNC(=O)N)NC(=O)[C@H](C(C)C)NC(=O)CCCCCN4C(=O)C=CC4=O"
+    },
+    "emtansine": {
+      "cid": 92131096,
+      "what": "MCC-DM1",
+      "join": "nhs-ester",
+      "formula": "C51H66ClN5O16S",
+      "smiles": "C[C@@H]1[C@@H]2C[C@]([C@@H](/C=C/C=C(/CC3=CC(=C(C(=C3)OC)Cl)N(C(=O)C[C@@H]([C@]4([C@H]1O4)C)OC(=O)[C@H](C)N(C)C(=O)CCSC5CC(=O)N(C5=O)CC6CCC(CC6)C(=O)ON7C(=O)CCC7=O)C)\\C)OC)(NC(=O)O2)O"
+    },
+    "deruxtecan": {
+      "cid": 118305111,
+      "what": "mc-GGFG-DXd",
+      "join": "maleimide",
+      "formula": "C52H56FN9O13",
+      "smiles": "CC[C@@]1(C2=C(COC1=O)C(=O)N3CC4=C5[C@H](CCC6=C5C(=CC(=C6C)F)N=C4C3=C2)NC(=O)COCNC(=O)CNC(=O)[C@H](CC7=CC=CC=C7)NC(=O)CNC(=O)CNC(=O)CCCCCN8C(=O)C=CC8=O)O"
+    },
+    "govitecan": {
+      "cid": 89983570,
+      "what": "CL2A-SN-38",
+      "join": "maleimide",
+      "formula": "C73H97N11O22",
+      "smiles": "CCC1=C2CN3C(=CC4=C(C3=O)COC(=O)[C@@]4(CC)OC(=O)OCC5=CC=C(C=C5)NC(=O)[C@H](CCCCN)NC(=O)COCC(=O)NCCOCCOCCOCCOCCOCCOCCOCCOCCN6C=C(N=N6)CNC(=O)C7CCC(CC7)CN8C(=O)C=CC8=O)C2=NC9=C1C=C(C=C9)O"
+    },
+    "mafodotin": {
+      "cid": 56949327,
+      "what": "mc-MMAF",
+      "join": "maleimide",
+      "formula": "C49H76N6O11",
+      "smiles": "CC[C@H](C)[C@@H]([C@@H](CC(=O)N1CCC[C@H]1[C@@H]([C@@H](C)C(=O)N[C@@H](CC2=CC=CC=C2)C(=O)O)OC)OC)N(C)C(=O)[C@H](C(C)C)NC(=O)[C@H](C(C)C)N(C)C(=O)CCCCCN3C(=O)C=CC3=O"
+    },
+    "soravtansine": {
+      "cid": 91667591,
+      "what": "sulfo-SPDB-DM4",
+      "join": "carboxyl",
+      "formula": "C42H60ClN3O15S3",
+      "smiles": "C[C@@H]1[C@@H]2C[C@]([C@@H](/C=C/C=C(/CC3=CC(=C(C(=C3)OC)Cl)N(C(=O)C[C@@H]([C@]4([C@H]1O4)C)OC(=O)[C@H](C)N(C)C(=O)CCC(C)(C)SSCCC(C(=O)O)S(=O)(=O)O)C)\\C)OC)(NC(=O)O2)O"
+    },
+    "tesirine": {
+      "cid": 73672523,
+      "what": "mal-PEG8-Val-Ala-PABC-PBD dimer",
+      "join": "maleimide",
+      "formula": "C75H101N9O23",
+      "smiles": "CC1=CN2[C@@H](C1)C=NC3=CC(=C(C=C3C2=O)OC)OCCCCCOC4=C(C=C5C(=C4)N([C@H]([C@@H]6CC(=CN6C5=O)C)O)C(=O)OCC7=CC=C(C=C7)NC(=O)[C@H](C)NC(=O)[C@H](C(C)C)NC(=O)CCOCCOCCOCCOCCOCCOCCOCCOCCNC(=O)CCN8C(=O)C=CC8=O)OC"
+    },
+    "ozogamicin": {
+      "cid": 9942071,
+      "what": "AcBut hydrazone / N-acetyl-γ-calicheamicin",
+      "join": "amide",
+      "formula": "C73H97IN6O25S3",
+      "smiles": "CCN([C@H]1CO[C@H](C[C@@H]1OC)O[C@@H]2[C@H]([C@@H]([C@H](O[C@H]2O[C@H]3C#C/C=C\\C#C[C@@]\\4(CC(=O)C(=C3/C4=C\\CSSC(C)(C)CC(=O)N/N=C(\\C)/C5=CC=C(C=C5)OCCCC(=O)N)NC(=O)OC)O)C)NO[C@H]6C[C@@H]([C@@H]([C@H](O6)C)SC(=O)C7=C(C(=C(C(=C7OC)OC)O[C@H]8[C@@H]([C@@H]([C@H]([C@@H](O8)C)O)OC)O)I)C)O)O)C(=O)C"
+    }
+  }
+}

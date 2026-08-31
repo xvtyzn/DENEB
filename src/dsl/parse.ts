@@ -71,6 +71,7 @@ export function parseDSL(source: string): Construct {
   const chains: Chain[] = [];
   const specificities: SpecificityDecl[] = [];
   const links: Link[] = [];
+  const isotypes: Array<{ chain: string; isotype: string; line: number }> = [];
   const construct: Construct = { chains };
 
   const rawLines = source
@@ -83,7 +84,7 @@ export function parseDSL(source: string): Construct {
   let auto = 0;
   for (const { text, no } of rawLines) {
     if (text.startsWith('@')) {
-      applyDirective(text.slice(1), construct, specificities, links, no);
+      applyDirective(text.slice(1), construct, specificities, links, isotypes, no);
       continue;
     }
     const colon = splitChainLabel(text);
@@ -94,6 +95,13 @@ export function parseDSL(source: string): Construct {
 
   if (specificities.length > 0) construct.specificities = specificities;
   if (links.length > 0) construct.links = links;
+  // Applied after every line has been read, so the directive may come before or
+  // after the chain it names.
+  for (const { chain: id, isotype, line } of isotypes) {
+    const chain = chains.find((c) => c.id === id);
+    if (!chain) throw new DslError(`@isotype names no chain "${id}"`, line, 0);
+    for (const domain of chain.domains) domain.isotype = isotype;
+  }
   return construct;
 }
 
@@ -113,6 +121,7 @@ function applyDirective(
   construct: Construct,
   specificities: SpecificityDecl[],
   links: Link[],
+  isotypes: Array<{ chain: string; isotype: string; line: number }>,
   lineNo: number,
 ): void {
   const m = /^(\w+)\s*(.*)$/.exec(text.trim());
@@ -148,6 +157,18 @@ function applyDirective(
         throw new DslError(`@${key} expects two domain references`, lineNo, 0);
       }
       links.push({ type: key === 'pair' ? 'pair' : 'disulfide', a: refs[0], b: refs[1] });
+      break;
+    }
+    case 'isotype': {
+      // A chain-level fact the model keeps on its domains, which is what the
+      // lint rules and the diff read.
+      const eq = rest.indexOf('=');
+      if (eq < 0) throw new DslError(`@isotype expects CHAIN=IgG1`, lineNo, 0);
+      isotypes.push({
+        chain: rest.slice(0, eq).trim(),
+        isotype: rest.slice(eq + 1).trim(),
+        line: lineNo,
+      });
       break;
     }
     case 'color': {

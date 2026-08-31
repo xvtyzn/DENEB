@@ -25,13 +25,15 @@ const { parseDSL } = await import(resolve(root, 'dist/index.js'));
  * says the drawing carries its own atom. The chemical structure is the one
  * thing the notation cannot hold, so it is attached afterwards.
  */
-const withStructure = (source, linker) => {
+const withStructure = (source, moiety) => {
   const construct = parseDSL(source);
-  const structure = structureFor(linker);
+  const { structure, attachment } = structureFor(moiety, { side: 'right', size: 200 });
   for (const chain of construct.chains) {
     for (const domain of chain.domains) {
       for (const m of domain.modifications ?? []) {
-        if (m.payload) m.payload.structure = structure;
+        if (!m.payload) continue;
+        m.payload.structure = structure;
+        m.payload.attachment = attachment;
       }
     }
   }
@@ -46,10 +48,10 @@ const cases = [
     construct: withStructure(
       `
         @name anti-HER2 vc-MMAE (DAR 4)
-        HC: VH(HER2)-CH1-h-CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine/cleavable/attachment=]-CH3 *2
+        HC: VH(HER2)-CH1-h-CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine/cleavable]-CH3 *2
         LC: VL(HER2)-CL *2
       `,
-      'mc-Val-Cit-PAB',
+      'vedotin',
     ),
   },
   {
@@ -59,10 +61,10 @@ const cases = [
     construct: withStructure(
       `
         @name anti-CD30 SMCC-DM1 (DAR 3.5)
-        HC: VH(CD30)-CH1-h-CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable/attachment=/shape=diamond/color=#7c3aed]-CH3 *2
+        HC: VH(CD30)-CH1-h-CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable/shape=diamond/color=#7c3aed]-CH3 *2
         LC: VL(CD30)-CL *2
       `,
-      'SMCC',
+      'emtansine',
     ),
   },
   {
@@ -72,10 +74,10 @@ const cases = [
     construct: withStructure(
       `
         @name THIOMAB DXd (DAR 2)
-        HC: VH(TROP2)-CH1-h-CH2[thiomab=A114C, drug=DXd/GGFG tetrapeptide/2/site=THIOMAB A114C/cleavable/attachment=/shape=circle]-CH3 *2
+        HC: VH(TROP2)-CH1-h-CH2[thiomab=A114C, drug=DXd/GGFG tetrapeptide/2/site=THIOMAB A114C/cleavable/shape=circle]-CH3 *2
         LC: VL(TROP2)-CL *2
       `,
-      'GGFG',
+      'deruxtecan',
     ),
   },
 ];

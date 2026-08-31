@@ -104,6 +104,7 @@
     "prepublishOnly": "npm run build",
     "adc-demo": "vite build && node scripts/adc-demo.mjs",
     "adc-approved": "vite build && node scripts/adc-approved.mjs",
+    "moieties": "node scripts/fetch-moieties.mjs",
     "size": "vite build && node scripts/size.mjs",
     "check-exports": "vite build && node scripts/check-exports.mjs",
     "constant-regions": "node scripts/fetch-constant-regions.mjs",

@@ -112,7 +112,10 @@ import { AntibodyViewer } from 'deneb/react';
 | `#` / `;` | 行コメント / 行区切り |
 
 ディレクティブ: `@name` `@color 標的=#rrggbb` `@skeleton y|row` `@arm 角度`
-`@armmode splayed|crossed` `@pair A:0 B:2` `@ss A:2 B:0`
+`@armmode splayed|crossed` `@pair A:0 B:2` `@ss A:2 B:0` `@isotype HC=IgG4`
+
+`@isotype` は鎖を指定します。鎖の行の前でも後でも構いません。lint の
+`igg4-fab-arm-exchange` が読むのはこれで、diff もサブクラスの変化を報告します。
 
 ### どのドメイン同士が対合するかを指定する
 
@@ -598,6 +601,7 @@ npm run readme-images  # docs/images/ を再生成（PNG 化に Playwright が�
 npm run gallery      # ビルドして examples/gallery.html を生成
 npm run adc-demo     # ビルドして examples/adc.html を生成
 npm run adc-approved # ビルドして examples/adc-approved.html を生成
+npm run moieties     # scripts/lib/moieties.json を PubChem から再取得
 npm run panel-demo   # ビルドして examples/panel.html を生成
 npm run size         # 各エントリの実サイズと、コアが optional 領域を
                      # 抱え込んでいないかの検査
@@ -614,7 +618,12 @@ OpenChemLib（このリポジトリの devDependency であり、ライブラリ
 追随します。
 
 `scripts/adc-approved.mjs` は上市 ADC 12 品目を DSL で書き、記法を図の下に並べて
-出力します。標的・リンカー・ペイロード・開裂性はカードごとに出典を引いています。
+出力します。リンカー–ペイロード全体を抗体の右側に描きます。この部分は INN の接尾辞
+そのもの（brentuximab **vedotin** の vedotin が mc-Val-Cit-PAB-MMAE）で、
+`npm run moieties` が PubChem から取得し、各レコードの分子式を自身の InChI と
+突き合わせて検証します。抗体との接続はその化学に従います — マレイミドはシステインの
+チオールで開き、スクシンイミジルエステルと遊離酸は脱離基を失ってリジンをアシル化
+します。手で打ち込んだ SMILES は 1 つもありません。標的・リンカー・ペイロード・開裂性はカードごとに出典を引いています。
 **DAR と結合部位は 2 品目にしか書いていません** — 出典がその 2 つにしか記載して
 いないからで、残りは数値を主張せずフィールドごと省いています。
 

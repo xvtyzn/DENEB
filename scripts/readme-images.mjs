@@ -49,7 +49,7 @@ adc.chains[0].domains[2].modifications = [
       dar: 4,
       count: 1,
       attachment: 'S',
-      structure: structureFor('mc-Val-Cit-PAB', 150),
+      structure: structureFor('vedotin', { side: 'right', size: 180 }).structure,
     },
   },
 ];

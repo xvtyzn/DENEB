@@ -50,6 +50,13 @@ export interface DepictionOptions {
    */
   attachTo?: number;
   /**
+   * Which side of the antibody the drawing will sit on. The molecule is turned
+   * so it runs away from the protein either way; naming the side it will be
+   * drawn on means it needs no further turning, and the toolkit lays the atom
+   * labels out upright for the angle it ends up at. Default `'left'`.
+   */
+  side?: 'left' | 'right';
+  /**
    * Longest side of the drawing, in diagram units. Default 150. The other side
    * follows from the shape of the molecule, so a compound that happens to be
    * laid out tall does not come out twice the height of the antibody.
@@ -66,7 +73,12 @@ export interface DepictionOptions {
 }
 
 const DEFAULT_DEPICTION = {
+  // The wedges stay -- they are the stereochemistry. What goes is the toolkit's
+  // commentary on it: the "abs" enhanced-stereo marker, the R/S labels and the
+  // "this enantiomer" caption, none of which belong on a schematic.
   suppressChiralText: true,
+  suppressESR: true,
+  suppressCIPParity: true,
   noStereoProblem: true,
   fontWeight: 'normal',
 };
@@ -86,7 +98,7 @@ export function structureFromMolecule(
     throw new DepictionError(`atom ${attachAtom} is not in this molecule`);
   }
   const inner = bodyNeighbour(molecule, attachAtom, options.attachTo);
-  orient(molecule, attachAtom, inner);
+  orient(molecule, attachAtom, inner, options.side ?? 'left');
 
   const canvas = options.renderSize ?? { width: 420, height: 290 };
   const id = `dn-depiction`;
@@ -136,14 +148,19 @@ function attachLabel(atom: number): string {
 
 /**
  * Turn the molecule about its conjugated atom until the bond into the body of
- * the molecule lies along the x axis, with the body to the left.
+ * the molecule lies along the x axis, with the body away from the antibody.
  *
  * That is the orientation a conjugation scheme is drawn in — protein, bond,
  * then the compound running away from it — and doing it here, on coordinates,
  * means the toolkit lays the atom labels out upright for the final angle rather
  * than the diagram having to correct them afterwards.
  */
-function orient(molecule: DepictableMolecule, atom: number, inner: number | null): void {
+function orient(
+  molecule: DepictableMolecule,
+  atom: number,
+  inner: number | null,
+  side: 'left' | 'right',
+): void {
   if (inner == null) return;
   const ax = molecule.getAtomX(atom);
   const ay = molecule.getAtomY(atom);
@@ -151,9 +168,11 @@ function orient(molecule: DepictableMolecule, atom: number, inner: number | null
   const dy = ay - molecule.getAtomY(inner);
   const length = Math.hypot(dx, dy);
   if (length === 0) return;
-  // Rotate by -angle(d) so d ends up along +x.
-  const cos = dx / length;
-  const sin = -dy / length;
+  // Rotate so the bond out to the conjugated atom points at the antibody: +x
+  // when the drawing sits to its left, -x when it sits to its right.
+  const facing = side === 'right' ? -1 : 1;
+  const cos = (facing * dx) / length;
+  const sin = (-facing * dy) / length;
   for (let i = 0; i < molecule.getAllAtoms(); i++) {
     const x = molecule.getAtomX(i) - ax;
     const y = molecule.getAtomY(i) - ay;
