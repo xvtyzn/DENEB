@@ -10,15 +10,34 @@ function domainToken(d: Domain): string {
   return TYPE_TOKEN[d.type] ?? (d.type === 'custom' ? (d.label ?? 'custom') : d.type);
 }
 
+/**
+ * A payload's fields, written so they read back as themselves.
+ *
+ * The shorthand places bare values by what they are — first string the linker,
+ * second the site; first number the DAR, second the copies — so a value can only
+ * be written bare when everything before it is there too. Anything else is
+ * named, which is also the only way to say the fields the shorthand has no room
+ * for.
+ */
+function payloadFields(payload: NonNullable<Modification['payload']>): string[] {
+  const fields = [payload.name];
+  if (payload.linker) fields.push(payload.linker);
+  if (payload.dar != null) fields.push(String(payload.dar));
+  if (payload.count != null) {
+    fields.push(payload.dar != null ? String(payload.count) : `copies=${payload.count}`);
+  }
+  if (payload.site) fields.push(payload.linker ? payload.site : `site=${payload.site}`);
+  if (payload.cleavable != null) fields.push(payload.cleavable ? 'cleavable' : 'noncleavable');
+  if (payload.attachment != null) fields.push(`attachment=${payload.attachment}`);
+  if (payload.shape) fields.push(`shape=${payload.shape}`);
+  if (payload.color) fields.push(`color=${payload.color}`);
+  return fields;
+}
+
 function modToken(m: Modification): string {
   const name = m.type === 'custom' && m.label ? m.label : m.type;
   if (m.payload) {
-    const fields = [m.payload.name];
-    if (m.payload.linker) fields.push(m.payload.linker);
-    if (m.payload.dar != null) fields.push(String(m.payload.dar));
-    if (m.payload.count != null) fields.push(String(m.payload.count));
-    if (m.payload.site) fields.push(m.payload.site);
-    return `${name}=${fields.join('/')}`;
+    return `${name}=${payloadFields(m.payload).join('/')}`;
   }
   const catalog = MODIFICATION_CATALOG[m.type];
   const defaults = catalog?.residues;

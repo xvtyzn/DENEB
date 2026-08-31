@@ -278,6 +278,36 @@ itself is a real depiction of the chemistry rather than a cartoon blob.
 }
 ```
 
+### Writing the conjugation
+
+After the compound's name the fields are read **by what they are**: the first
+string is the linker and the second the conjugation site, the first number is the
+DAR and the second how many glyphs to draw on this domain. `cleavable` and
+`noncleavable` are words in their own right.
+
+```
+CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine]
+CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable]
+```
+
+That covers the common case and cannot say everything, so any field may also be
+written `key=value` — `linker` `site` `dar` `copies` `cleavable` `attachment`
+`shape` `color`. Use it for a site with no linker in front of it, which the
+shorthand would otherwise read as the linker, and for the fields it has no room
+for at all:
+
+```
+CH2[drug=DM1/site=surface lysine/shape=diamond/color=#7c3aed]
+CH2[thiomab=A114C, drug=DXd/GGFG/2/site=THIOMAB A114C/attachment=]
+```
+
+`attachment=` with nothing after it leaves the bond bare, which is what you want
+when the drawing carries its own atom. A value that has nowhere left to go is an
+error naming the field to use, rather than a quiet overwrite of the last one.
+
+The one thing the notation cannot hold is `structure`, the drawing itself; that
+is attached to the parsed construct, as below.
+
 The conjugation is drawn the way an ADC scheme writes it: a bond off the domain's
 surface, the atom the chemistry leaves behind — `S` for a cysteine thiol, `NH`
 for a lysine amide, `N` for a glycan or click handle, inferred from `site` unless

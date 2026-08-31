@@ -17,106 +17,66 @@ import { structureFor } from './lib/linkers.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { renderSVG, renderLinear } = await import(resolve(root, 'dist/index.js'));
 
-const igg = (specificity, extra = {}) => [
-  {
-    id: 'HC',
-    copies: 2,
-    domains: [
-      { type: 'VH', specificity },
-      { type: 'CH1' },
-      { type: 'hinge' },
-      { type: 'CH2', modifications: extra.ch2 ?? [] },
-      { type: 'CH3' },
-    ],
-  },
-  {
-    id: 'LC',
-    copies: 2,
-    domains: [
-      { type: 'VL', specificity },
-      { type: 'CL', modifications: extra.cl ?? [] },
-    ],
-  },
-];
+const { parseDSL } = await import(resolve(root, 'dist/index.js'));
+
+/**
+ * Everything but the artwork is written in the DSL — including cleavability,
+ * the shape and colour of the payload glyph, and the empty `attachment` that
+ * says the drawing carries its own atom. The chemical structure is the one
+ * thing the notation cannot hold, so it is attached afterwards.
+ */
+const withStructure = (source, linker) => {
+  const construct = parseDSL(source);
+  const structure = structureFor(linker);
+  for (const chain of construct.chains) {
+    for (const domain of chain.domains) {
+      for (const m of domain.modifications ?? []) {
+        if (m.payload) m.payload.structure = structure;
+      }
+    }
+  }
+  return construct;
+};
 
 const cases = [
   {
     label: 'Interchain cysteine, cleavable dipeptide linker',
     note: 'The classic vc-MMAE architecture: a heterogeneous DAR 4 average, conjugated at the interchain cysteines below the hinge.',
     options: {},
-    construct: {
-      name: 'anti-HER2 vc-MMAE (DAR 4)',
-      chains: igg('HER2', {
-        ch2: [
-          {
-            type: 'drug',
-            payload: {
-              name: 'MMAE',
-              linker: 'mc-vc-PAB',
-              cleavable: true,
-              dar: 4,
-              count: 2,
-              site: 'interchain cysteine',
-              // The drawing carries its own sulfur, so no extra atom label.
-              attachment: '',
-              structure: structureFor('mc-Val-Cit-PAB'),
-            },
-          },
-        ],
-      }),
-    },
+    construct: withStructure(
+      `
+        @name anti-HER2 vc-MMAE (DAR 4)
+        HC: VH(HER2)-CH1-h-CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine/cleavable/attachment=]-CH3 *2
+        LC: VL(HER2)-CL *2
+      `,
+      'mc-Val-Cit-PAB',
+    ),
   },
   {
     label: 'Lysine conjugation, non-cleavable linker',
     note: 'A broken stalk marks the non-cleavable linker; the payload is released only on catabolism of the antibody.',
     options: {},
-    construct: {
-      name: 'anti-CD30 SMCC-DM1 (DAR 3.5)',
-      chains: igg('CD30', {
-        ch2: [
-          {
-            type: 'drug',
-            payload: {
-              name: 'DM1',
-              linker: 'SMCC',
-              cleavable: false,
-              dar: 3.5,
-              site: 'surface lysine',
-              attachment: '',
-              shape: 'diamond',
-              color: '#7c3aed',
-              structure: structureFor('SMCC'),
-            },
-          },
-        ],
-      }),
-    },
+    construct: withStructure(
+      `
+        @name anti-CD30 SMCC-DM1 (DAR 3.5)
+        HC: VH(CD30)-CH1-h-CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable/attachment=/shape=diamond/color=#7c3aed]-CH3 *2
+        LC: VL(CD30)-CL *2
+      `,
+      'SMCC',
+    ),
   },
   {
     label: 'Site-specific, engineered cysteine',
     note: 'Two marks tell the story: the engineered cysteine that was introduced, and what was attached to it.',
     options: {},
-    construct: {
-      name: 'THIOMAB DXd (DAR 2)',
-      chains: igg('TROP2', {
-        ch2: [
-          { type: 'thiomab', residues: ['A114C'] },
-          {
-            type: 'drug',
-            payload: {
-              name: 'DXd',
-              linker: 'GGFG tetrapeptide',
-              cleavable: true,
-              dar: 2,
-              site: 'THIOMAB A114C',
-              attachment: '',
-              shape: 'circle',
-              structure: structureFor('GGFG'),
-            },
-          },
-        ],
-      }),
-    },
+    construct: withStructure(
+      `
+        @name THIOMAB DXd (DAR 2)
+        HC: VH(TROP2)-CH1-h-CH2[thiomab=A114C, drug=DXd/GGFG tetrapeptide/2/site=THIOMAB A114C/cleavable/attachment=/shape=circle]-CH3 *2
+        LC: VL(TROP2)-CL *2
+      `,
+      'GGFG',
+    ),
   },
 ];
 
@@ -169,12 +129,17 @@ const html = `<!doctype html>
   follow.
 </p>
 <div class="grid">${[...cases, inlineCase].map(card).join('')}</div>
-<pre>import { Molecule } from 'openchemlib';
+<pre>// Everything but the drawing is notation.
+HC: VH(HER2)-CH1-h-CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine]-CH3 *2
+LC: VL(HER2)-CL *2
+
+// The drawing is the one thing the notation cannot hold.
+import { Molecule } from 'openchemlib';
 import { structureFromMolecule } from 'deneb/chem';
 
-// The SMILES is written to start at the atom the antibody is bonded to, so
-// that is atom 0. The linker is in its conjugated form: the maleimide already
-// opened by the thiol.
+// The SMILES starts at the atom the antibody is bonded to, so that is atom 0,
+// and the linker is in its conjugated form: the maleimide already opened by
+// the thiol.
 payload.structure = structureFromMolecule(
   Molecule.fromSmiles('SC2CC(=O)N(CCCCCC(=O)N…)C2=O'),
   { attachAtom: 0, caption: 'mc-Val-Cit-PAB' },

@@ -6,6 +6,7 @@ import type {
   Link,
   Modification,
   Payload,
+  PayloadShape,
   SpecificityDecl,
 } from '../model/types';
 import { MODIFICATION_ALIASES, MODIFICATION_CATALOG } from '../model/catalog';
@@ -259,20 +260,133 @@ function parseModifications(raw: string, lineNo: number, pos: number): Modificat
     });
 }
 
-/** `MMAE`, `MMAE/vc-PAB`, `MMAE/vc-PAB/4` — the tail fields are order-free. */
+const PAYLOAD_SHAPES = new Set<PayloadShape>([
+  'hexagon',
+  'circle',
+  'triangle',
+  'diamond',
+  'square',
+  'star',
+]);
+
+/** Whether the linker releases its payload inside the cell. */
+const CLEAVABILITY: Record<string, boolean> = {
+  cleavable: true,
+  noncleavable: false,
+  'non-cleavable': false,
+  uncleavable: false,
+};
+
+/**
+ * `MMAE`, `MMAE/vc-PAB`, `MMAE/vc-PAB/4/2/interchain cysteine` — after the
+ * compound's name the fields are read by what they are: the first string is the
+ * linker and the second the conjugation site, the first number is the DAR and
+ * the second how many glyphs to draw here. `cleavable` and `noncleavable` are
+ * words in their own right.
+ *
+ * That shorthand covers the common case and cannot say everything: a site with
+ * no linker named would land in the linker's place, and there is no room in it
+ * at all for the payload's shape or colour. So any field may also be written
+ * `key=value`, and a value that cannot be placed is an error rather than a
+ * quiet overwrite.
+ */
 function parsePayload(fields: string[], lineNo: number, pos: number): Payload {
   const [name, ...rest] = fields;
   if (!name) throw new DslError(`a conjugated payload needs a name`, lineNo, pos);
+  if (name.includes('=')) {
+    throw new DslError(`a conjugated payload's name comes first, not "${name}"`, lineNo, pos);
+  }
   const payload: Payload = { name };
+
+  const set = (key: string, value: string): void => {
+    switch (key) {
+      case 'linker':
+        payload.linker = value;
+        return;
+      case 'site':
+        payload.site = value;
+        return;
+      case 'dar':
+      case 'copies':
+      case 'count': {
+        const n = Number(value);
+        if (!Number.isFinite(n)) {
+          throw new DslError(`${key} expects a number, got "${value}"`, lineNo, pos);
+        }
+        if (key === 'dar') payload.dar = n;
+        else payload.count = n;
+        return;
+      }
+      case 'cleavable': {
+        const flag = CLEAVABILITY[value.toLowerCase()];
+        if (flag == null && value !== 'true' && value !== 'false') {
+          throw new DslError(`cleavable expects true or false, got "${value}"`, lineNo, pos);
+        }
+        payload.cleavable = flag ?? value === 'true';
+        return;
+      }
+      case 'attachment':
+        // Deliberately allows the empty string: that is how a bond is left bare.
+        payload.attachment = value;
+        return;
+      case 'shape':
+        if (!PAYLOAD_SHAPES.has(value as PayloadShape)) {
+          throw new DslError(
+            `unknown payload shape "${value}"; one of ${[...PAYLOAD_SHAPES].join(', ')}`,
+            lineNo,
+            pos,
+          );
+        }
+        payload.shape = value as PayloadShape;
+        return;
+      case 'color':
+        payload.color = value;
+        return;
+      default:
+        throw new DslError(
+          `unknown payload field "${key}"; one of linker, site, dar, copies, ` +
+            `cleavable, attachment, shape, color`,
+          lineNo,
+          pos,
+        );
+    }
+  };
+
   for (const field of rest) {
+    const eq = field.indexOf('=');
+    if (eq > 0) {
+      set(field.slice(0, eq).trim().toLowerCase(), field.slice(eq + 1).trim());
+      continue;
+    }
+    const flag = CLEAVABILITY[field.toLowerCase()];
+    if (flag != null) {
+      payload.cleavable = flag;
+      continue;
+    }
     const asNumber = Number(field);
     if (Number.isFinite(asNumber)) {
-      // First number is the drug-to-antibody ratio, second is how many copies
-      // to draw on this domain.
       if (payload.dar == null) payload.dar = asNumber;
       else if (payload.count == null) payload.count = asNumber;
-    } else if (!payload.linker) payload.linker = field;
-    else payload.site = field;
+      else {
+        throw new DslError(
+          `"${field}" has nowhere to go: dar and copies are already given. ` +
+            `Write dar=${field} or copies=${field} to say which you mean`,
+          lineNo,
+          pos,
+        );
+      }
+      continue;
+    }
+    if (payload.linker == null) payload.linker = field;
+    else if (payload.site == null) payload.site = field;
+    else {
+      throw new DslError(
+        `"${field}" has nowhere to go: linker and site are already given. ` +
+          `Write site="${field}" to say which you mean`,
+        lineNo,
+        pos,
+      );
+    }
   }
   return payload;
 }

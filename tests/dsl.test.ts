@@ -51,6 +51,53 @@ describe('parseDSL', () => {
     ]);
   });
 
+  it('reads a conjugated payload in the positional shorthand', () => {
+    const c = parseDSL('HC: CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine]');
+    expect(c.chains[0]!.domains[0]!.modifications![0]!.payload).toEqual({
+      name: 'MMAE',
+      linker: 'mc-vc-PAB',
+      dar: 4,
+      count: 2,
+      site: 'interchain cysteine',
+    });
+  });
+
+  it('takes cleavability as a word of its own', () => {
+    const c = parseDSL('HC: CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable]');
+    expect(c.chains[0]!.domains[0]!.modifications![0]!.payload!.cleavable).toBe(false);
+  });
+
+  it('names a field the shorthand has no room for, or no place to put', () => {
+    // A site with no linker would land in the linker's slot; shape and colour
+    // the shorthand cannot say at all.
+    const c = parseDSL('HC: CH2[drug=DM1/site=surface lysine/shape=diamond/color=#7c3aed]');
+    expect(c.chains[0]!.domains[0]!.modifications![0]!.payload).toEqual({
+      name: 'DM1',
+      site: 'surface lysine',
+      shape: 'diamond',
+      color: '#7c3aed',
+    });
+  });
+
+  it('takes an empty attachment, which is how a bond is left bare', () => {
+    const c = parseDSL('HC: CH2[drug=DXd/GGFG/2/1/THIOMAB A114C/attachment=]');
+    expect(c.chains[0]!.domains[0]!.modifications![0]!.payload!.attachment).toBe('');
+  });
+
+  it('refuses a value with nowhere to go rather than overwriting one', () => {
+    // Before, a sixth field silently replaced the site.
+    expect(() => parseDSL('HC: CH2[drug=MMAE/vc-PAB/4/2/a site/and another]')).toThrow(
+      /nowhere to go/,
+    );
+    expect(() => parseDSL('HC: CH2[drug=MMAE/vc-PAB/4/2/3]')).toThrow(/nowhere to go/);
+  });
+
+  it('refuses a field or a shape it does not know', () => {
+    expect(() => parseDSL('HC: CH2[drug=MMAE/fizz=1]')).toThrow(/unknown payload field/);
+    expect(() => parseDSL('HC: CH2[drug=MMAE/shape=blob]')).toThrow(/unknown payload shape/);
+    expect(() => parseDSL('HC: CH2[drug=name=MMAE]')).toThrow(/name comes first/);
+  });
+
   it('records @pair and @ss as explicit links', () => {
     const c = parseDSL(`
       A: VH(x)~VL(y)
@@ -83,6 +130,21 @@ describe('stringifyDSL', () => {
       const reparsed = parseDSL(stringifyDSL(original));
       expect(reparsed, name).toEqual(original);
     }
+  });
+
+  it('round-trips a payload with every field set', () => {
+    const source =
+      'C1: CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable/attachment=NH/' +
+      'shape=diamond/color=#7c3aed]';
+    expect(stringifyDSL(parseDSL(source))).toBe(source);
+  });
+
+  it('names a field back when the shorthand could not carry it', () => {
+    // Bare values are placed by what they are, so a site with no linker in
+    // front of it has to be written out.
+    expect(stringifyDSL(parseDSL('C1: CH2[drug=DM1/site=lysine/copies=2]'))).toBe(
+      'C1: CH2[drug=DM1/copies=2/site=lysine]',
+    );
   });
 
   it('writes linkers back as `~`', () => {

@@ -268,15 +268,37 @@ ADC のペイロードは名前を書くだけでなく**図として描かれ�
 与えず、かつ反対側のコピーを反転してよい場合だけ `structure.mirror: true` を
 指定してください。
 
-記法では化合物名を先頭に:
+### 記法でのコンジュゲートの書き方
+
+化合物名の後ろのフィールドは、**値の型で**読まれます。1 つ目の文字列がリンカー、
+2 つ目が結合部位。1 つ目の数値が DAR、2 つ目がそのドメインに描くグリフ数。
+`cleavable` / `noncleavable` はそれ自体が 1 つの語です。
 
 ```
-LC: VL(HER2)-CL[drug=MMAE/vc-PAB/4/2/interchain cysteine]
+CH2[drug=MMAE/mc-vc-PAB/4/2/interchain cysteine]
+CH2[drug=DM1/SMCC/3.5/1/surface lysine/noncleavable]
 ```
+
+これで大半は書けますが、すべては書けません。どのフィールドも `key=value` の形で
+書けます — `linker` `site` `dar` `copies` `cleavable` `attachment` `shape`
+`color`。リンカーを伴わない結合部位（省略形ではリンカーと読まれてしまいます）や、
+省略形に居場所のないフィールドはこちらで:
+
+```
+CH2[drug=DM1/site=surface lysine/shape=diamond/color=#7c3aed]
+CH2[thiomab=A114C, drug=DXd/GGFG/2/site=THIOMAB A114C/attachment=]
+```
+
+`attachment=`（値なし）は結合線の原子表記を消します。構造式が自前の原子を持って
+いるときに使います。**行き場のない値はエラー**になり、使うべきフィールド名を
+示します。以前のように最後の値を黙って上書きすることはありません。
 
 部位特異的コンジュゲーションは 2 つのマークで表せます — 導入したシステインが
 `thiomab`、そこに付けたものが `drug` です。`showPayloadNames: false` で
 グリフを残したまま名前だけ落とせます。
+
+記法が持てない唯一のものが `structure`（描画そのもの）です。パース後に付けます
+（下記）。
 
 ### 化合物の構造式
 
