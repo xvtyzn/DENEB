@@ -14,6 +14,10 @@ function fraction(structure: ReturnType<typeof structureFromMolecule>, point: { 
   return { x: (point.x - x) / w, y: (point.y - y) / h };
 }
 
+function labels(svg: string): string {
+  return [...svg.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((match) => match[1]).join('|');
+}
+
 describe('structureFromMolecule', () => {
   it('turns the molecule so its open bond runs straight out of the drawing', () => {
     // The whole point: the diagram bonds horizontally, so the bond inside the
@@ -72,12 +76,153 @@ describe('structureFromMolecule', () => {
   it('accounts for the antibody bond when rendering terminal sulfur and nitrogen', () => {
     const sulfur = structureFromMolecule(molecule('SCC'));
     const nitrogen = structureFromMolecule(molecule('NC(=O)C'));
-    const text = (svg: string) =>
-      [...svg.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((match) => match[1]).join('');
 
-    expect(text(sulfur.svg!)).not.toContain('H');
-    expect(text(nitrogen.svg!)).toContain('NH');
-    expect(text(nitrogen.svg!)).not.toContain('N2H');
+    expect(labels(sulfur.svg!)).not.toContain('H');
+    expect(labels(nitrogen.svg!)).toContain('N|H');
+    expect(labels(nitrogen.svg!)).not.toContain('N|2|H');
+  });
+
+  it('shows absolute and CIP stereochemistry by default, with an explicit compact mode', () => {
+    const chiral = molecule('N[C@H](F)[C@@H](Cl)C(=O)O');
+    const full = labels(structureFromMolecule(chiral).svg!);
+    const compact = labels(
+      structureFromMolecule(chiral, { stereoAnnotations: 'compact' }).svg!,
+    );
+
+    expect(full).toContain('abs');
+    expect(full.match(/(^|\|)abs(\||$)/g)).toHaveLength(1);
+    expect(full.match(/(^|\|)[RS](?=\||$)/g)).toHaveLength(2);
+    expect(compact).not.toContain('abs');
+    expect(compact).not.toMatch(/(^|\|)[RS](\||$)/);
+  });
+
+  it('can preserve curated coordinates instead of replacing them', () => {
+    const input = molecule('NCCCCN');
+    const positions = [
+      [0, 0],
+      [1, 0],
+      [1, 5],
+      [2, 5],
+      [2, 10],
+      [3, 10],
+    ];
+    positions.forEach(([x, y], atom) => {
+      input.setAtomX(atom, x!);
+      input.setAtomY(atom, y!);
+    });
+
+    const preserved = structureFromMolecule(input, { coordinateMode: 'preserve' });
+    const invented = structureFromMolecule(input, { coordinateMode: 'invent' });
+    expect(preserved.height! / preserved.width!).toBeGreaterThan(1.5);
+    expect(invented.width! / invented.height!).toBeGreaterThan(1.5);
+  });
+
+  it('can retain the source drawing direction instead of rotating its attachment bond', () => {
+    const input = molecule('NCCCCN');
+    const positions = [
+      [0, 0],
+      [0, 1],
+      [2, 1],
+      [4, 1],
+      [6, 1],
+      [8, 1],
+    ];
+    positions.forEach(([x, y], atom) => {
+      input.setAtomX(atom, x!);
+      input.setAtomY(atom, y!);
+    });
+
+    const drawing = structureFromMolecule(input, {
+      coordinateMode: 'preserve',
+      orientation: 'drawing',
+    });
+    const bond = structureFromMolecule(input, {
+      coordinateMode: 'preserve',
+      orientation: 'bond',
+    });
+    expect(drawing.width! / drawing.height!).toBeGreaterThan(2);
+    expect(bond.height! / bond.width!).toBeGreaterThan(2);
+    expect(drawing.attachFrom).toBeUndefined();
+  });
+
+  it('pins caller-selected scaffold coordinates while laying out the remainder', () => {
+    const input = molecule('NCCCCN');
+    const templated = structureFromMolecule(input, {
+      coordinateTemplate: {
+        positions: {
+          2: { x: 1, y: 5 },
+          3: { x: 2, y: 5 },
+        },
+      },
+    });
+    expect(templated.svg).toContain('<line');
+  });
+
+  it('abbreviates a selected linear repeat without changing the source molecule', () => {
+    const input = molecule('NCCOCCOCCOCCN');
+    const atomCount = input.getAllAtoms();
+    const abbreviated = structureFromMolecule(input, {
+      repeatUnits: [
+        {
+          atoms: [3, 4, 5, 6, 7, 8, 9, 10, 11],
+          unit: '–O–CH₂–CH₂–',
+          count: 3,
+        },
+      ],
+    });
+
+    expect(labels(abbreviated.svg!)).toContain('[–O–CH₂–CH₂–]₃');
+    expect(abbreviated.svg).toContain('class="dn-repeat-label"');
+    expect(abbreviated.svg).toContain('font-size="9"');
+    expect(abbreviated.svg).toContain('paint-order="stroke fill"');
+    expect(input.getAllAtoms()).toBe(atomCount);
+  });
+
+  it('closes a preserved-coordinate repeat to the requested span', () => {
+    const input = molecule('NCCOCCOCCOCCN');
+    for (let atom = 0; atom < input.getAllAtoms(); atom++) {
+      input.setAtomX(atom, atom * 2);
+      input.setAtomY(atom, 0);
+    }
+    const depict = (span: number) =>
+      structureFromMolecule(input, {
+        coordinateMode: 'preserve',
+        orientation: 'drawing',
+        repeatUnits: [
+          {
+            atoms: [3, 4, 5, 6, 7, 8, 9, 10, 11],
+            unit: '–O–CH₂–CH₂–',
+            count: 3,
+            span,
+          },
+        ],
+      });
+
+    const narrow = depict(2);
+    const wide = depict(12);
+    const endDistance = (svg: string) => {
+      const xs = [...svg.matchAll(/<text x="([-\d.]+)"[^>]*>N<\/text>/g)].map((match) =>
+        Number(match[1]),
+      );
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    expect(endDistance(wide.svg!)).toBeGreaterThan(endDistance(narrow.svg!));
+  });
+
+  it('rejects attachment and template atoms removed by a repeat abbreviation', () => {
+    const input = molecule('NCCOCCOCCOCCN');
+    const repeatUnits = [
+      { atoms: [3, 4, 5, 6, 7, 8, 9, 10, 11], unit: '–O–CH₂–CH₂–', count: 3 },
+    ];
+    expect(() => structureFromMolecule(input, { attachAtom: 3, repeatUnits })).toThrow(
+      /removed by a repeat abbreviation/,
+    );
+    expect(() =>
+      structureFromMolecule(input, {
+        repeatUnits,
+        coordinateTemplate: { positions: { 6: { x: 0, y: 0 } } },
+      }),
+    ).toThrow(/removed by a repeat abbreviation/);
   });
 
   it('does not mutate caller-owned coordinates', () => {

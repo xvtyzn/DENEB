@@ -369,6 +369,54 @@ payload.structure = structureFromMolecule(
 メソッドの一覧です。SVG の読み取りは OpenChemLib の `ID:Atom:N` 形式のヒット領域に
 依存するため、別ツールキットには同じ目印を出力するアダプタが必要です。
 
+座標生成は選択できます。既定の `coordinateMode: 'invent'` はツールキットで座標を
+作り直します。Molfile や作図エディタで調整済みの 2D 座標を使う場合は
+`coordinateMode: 'preserve'` を指定します。既定では抗体からの結合線に合わせて分子全体を
+剛体回転します。Molfile全体の横長・縦長といった作図方向も維持する場合は
+`orientation: 'drawing'` を追加します。認識しやすい骨格だけを保持して、新しい置換基を
+自動配置する場合は、呼び出し元の原子番号をキーにした `coordinateTemplate` を渡します。
+
+```ts
+payload.structure = structureFromMolecule(molecule, {
+  attachAtom: 42,
+  coordinateTemplate: {
+    positions: {
+      3: { x: 12.4, y: -3.8 },
+      4: { x: 13.9, y: -3.8 },
+      // ...調整済み骨格の残りの座標
+    },
+    strength: 'keep', // または 'prefer'
+  },
+});
+```
+
+長い直鎖反復は、呼び出し元の分子を変更せずに省略表記へ置き換えられます。各項目には
+外部結合を2本持つ分岐のない原子経路を指定し、描画上だけ慣用的な括弧と反復回数で
+表示します。
+
+```ts
+payload.structure = structureFromMolecule(molecule, {
+  repeatUnits: [{
+    atoms: pegAtomIndices,
+    unit: '–O–CH₂–CH₂–',
+    count: 8,
+    fontSize: 10, // 任意。ツールキットSVG内の最小サイズ。既定値は9
+    span: 6,       // 任意。座標保持時の両端間距離
+  }],
+});
+```
+
+座標保持時は、削除した経路の空間を閉じるよう片側のフラグメント全体を平行移動し、残す
+両側の構造を再作図しません。`span` で自動設定される4結合分の間隔を上書きできます。
+結合原子、`attachTo`、座標テンプレートの原子は省略する経路の外に置く必要があります。
+不正な経路や分岐した経路は、曖昧な図を出さず `DepictionError` になります。
+
+絶対配置の拡張ステレオ注釈（`abs`）と CIP 注釈（`R`/`S`）は、くさび結合とともに
+既定で表示します。分子全体に属する同じ `abs` グループは、各中心で繰り返さず1回だけ
+表示します。周囲の文書で立体情報を別に示しており、意図してくさびだけの模式図にする
+場合に限り `stereoAnnotations: 'compact'` を指定してください。この指定でもくさび結合
+そのものは削除しません。
+
 `svg` に渡したマークアップは**サニタイズせずそのまま**埋め込まれます。信頼できる
 マークアップのみ渡してください。ユーザ入力由来のものは `href` の方が安全です。
 

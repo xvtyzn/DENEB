@@ -3,9 +3,9 @@
  * Renders `examples/adc.html`: a set of antibody–drug conjugate formats, with
  * the payload's chemical structure drawn next to the molecule.
  *
- * The linker artwork comes from scripts/lib/linkers.mjs, which runs each
- * SMILES through OpenChemLib — a devDependency of this repo only, since
- * deneb draws the chemistry you supply rather than depicting it.
+ * The linker artwork comes from scripts/lib/linkers.mjs, which loads PubChem
+ * connectivity through OpenChemLib — a devDependency of this repo only — and
+ * retains a complete 2D record or curated scaffold where one is recorded.
  *
  *   npm run adc-demo
  */
@@ -119,16 +119,18 @@ const html = `<!doctype html>
 <p class="lede">
   deneb draws the conjugation — the linker stalk, the payload glyph, the DAR
   and the site — and will place a chemical structure you supply. It depicts no
-  chemistry itself. Below, each structure came from a SMILES string run through
-  OpenChemLib (a devDependency of this repo, not of the library) and then through
-  <code>deneb/chem</code>, which turns the molecule so the conjugated atom faces
-  the antibody and reports where that atom and the one behind it ended up. The
+  chemistry itself. Below, each structure uses PubChem connectivity loaded by
+  OpenChemLib (a devDependency of this repo, not of the library) and then passes
+  through <code>deneb/chem</code>, which preserves a supplied 2D drawing or can
+  orient a generated layout so the conjugated atom faces the antibody. The
   bond from the antibody then lands on the exact atom that carries it — the
   sulfur of a thiosuccinimide, the nitrogen of a lysine amide — and carries
   straight on into the molecule rather than meeting it at an angle.
   <strong>Each drawing contains the complete linker-payload moiety</strong>,
-  including the warhead. Replace the PubChem-derived SMILES with another
-  linker-payload and the pictures follow.
+  including the warhead. KADCYLA and TRODELVY retain complete PubChem 2D records;
+  an optional scaffold template remains available when no complete drawing is
+  supplied. Replace the molecule, drawing record, or coordinate template and the
+  pictures follow.
 </p>
 <div class="grid">${[...cases, inlineCase].map(card).join('')}</div>
 <pre>// Everything but the drawing is notation.

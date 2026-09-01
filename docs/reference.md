@@ -391,6 +391,60 @@ documents the OpenChemLib-compatible methods used. The SVG reader relies on
 OpenChemLib's `ID:Atom:N` hit-target convention; another toolkit needs an
 adapter that emits the same markers.
 
+Coordinate generation is a policy, not a requirement. The default
+`coordinateMode: 'invent'` asks the toolkit for a fresh layout. Use
+`coordinateMode: 'preserve'` for a Molfile or editor export whose 2D drawing has
+been curated. By default the result is still rigidly rotated so its attachment
+bond lines up with DENEB's stalk. Add `orientation: 'drawing'` to retain the
+source page direction as well; this is useful for a complete 2D record whose
+landscape or portrait composition is intentional. To retain only a recognisable
+scaffold while laying out new substituents, pass its caller-side atom positions
+as a `coordinateTemplate`:
+
+```ts
+payload.structure = structureFromMolecule(molecule, {
+  attachAtom: 42,
+  coordinateTemplate: {
+    positions: {
+      3: { x: 12.4, y: -3.8 },
+      4: { x: 13.9, y: -3.8 },
+      // ...the rest of the curated scaffold
+    },
+    strength: 'keep', // or 'prefer'
+  },
+});
+```
+
+Long linear repeats can be abbreviated without changing the caller's molecule.
+Each entry names one unbranched atom path with two external bonds; the path is
+replaced in the drawing by the conventional bracket-and-count label:
+
+```ts
+payload.structure = structureFromMolecule(molecule, {
+  repeatUnits: [{
+    atoms: pegAtomIndices,
+    unit: '–O–CH₂–CH₂–',
+    count: 8,
+    fontSize: 10, // optional; minimum toolkit-SVG size, default 9
+    span: 6,       // optional end-to-end distance in preserved coordinates
+  }],
+});
+```
+
+When coordinates are preserved, DENEB moves one intact side of the molecule to
+close the space left by the removed path; neither retained fragment is redrawn.
+`span` overrides the automatic four-bond gap. The attachment atom, `attachTo`,
+and coordinate-template atoms must stay outside an abbreviated path. Invalid or
+branched paths fail with `DepictionError` instead of producing ambiguous
+artwork.
+
+Absolute enhanced-stereo (`abs`) and CIP (`R`/`S`) annotations are shown by
+default, alongside wedge bonds. A molecule-wide `abs` group is written once,
+rather than repeated beside every member of that group. Set
+`stereoAnnotations: 'compact'` only when the surrounding document carries that
+information elsewhere and deliberately needs a wedge-only schematic; this
+option does not remove the wedge bonds themselves.
+
 The same thing in the notation, compound first:
 
 ```

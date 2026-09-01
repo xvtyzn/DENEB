@@ -11,16 +11,20 @@
  * The SMILES below are recorded verbatim from PubChem with their CIDs, and each
  * entry carries the molecular formula PubChem gives so that a transcription
  * error fails here rather than reaching a picture. Nothing is written from
- * memory.
+ * memory. Where PubChem supplies a complete 2D record, the examples retain
+ * those coordinates rather than recreating them from the SMILES. Emtansine
+ * also keeps ChEBI's CHEBI:82755 Molfile as its scaffold reference.
  *
  * Shared by scripts/adc-demo.mjs, scripts/adc-approved.mjs and
  * scripts/readme-images.mjs.
  */
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import OCL from 'openchemlib';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const lib = dirname(fileURLToPath(import.meta.url));
+const root = resolve(lib, '../..');
 const { structureFromMolecule } = await import(resolve(root, 'dist/chem.js'));
 
 /**
@@ -47,7 +51,7 @@ import moieties from './moieties.json' with { type: 'json' };
 export const MOIETIES = moieties.moieties;
 export const FETCHED = moieties.fetched;
 
-const { Molecule } = OCL;
+const { Molecule, SSSearcher } = OCL;
 
 /**
  * Element counts, so the check does not turn on how a toolkit orders them —
@@ -153,8 +157,24 @@ function conjugate(molecule, join) {
     molecule.setBondOrder(alkene.bond, 1);
     const sulfur = molecule.addAtom(16);
     molecule.addBond(alkene.carbon, sulfur);
+    const cx = molecule.getAtomX(alkene.carbon);
+    const cy = molecule.getAtomY(alkene.carbon);
+    let dx = 0;
+    let dy = 0;
+    for (let i = 0; i < molecule.getAllConnAtoms(alkene.carbon); i++) {
+      const neighbour = molecule.getConnAtom(alkene.carbon, i);
+      if (neighbour === sulfur) continue;
+      const vx = molecule.getAtomX(neighbour) - cx;
+      const vy = molecule.getAtomY(neighbour) - cy;
+      const length = Math.hypot(vx, vy) || 1;
+      dx -= vx / length;
+      dy -= vy / length;
+    }
+    const direction = Math.hypot(dx, dy) || 1;
+    const bondLength = molecule.getAverageBondLength(true) || 1.5;
+    molecule.setAtomX(sulfur, cx + (dx / direction) * bondLength);
+    molecule.setAtomY(sulfur, cy + (dy / direction) * bondLength);
     molecule.ensureHelperArrays(Molecule.cHelperNeighbours);
-    molecule.inventCoordinates();
     return { attachAtom: sulfur, attachment: '' };
   }
 
@@ -169,7 +189,6 @@ function conjugate(molecule, join) {
     if (molecule.getAtomLabel(carbonyl) !== 'C') {
       throw new Error(`the carbonyl moved: found ${molecule.getAtomLabel(carbonyl)}`);
     }
-    molecule.inventCoordinates();
     return { attachAtom: carbonyl, attachment: 'NH' };
   }
 
@@ -182,7 +201,6 @@ function conjugate(molecule, join) {
       for (let i = 0; i < molecule.getAllConnAtoms(carbon); i++) {
         const n = molecule.getConnAtom(carbon, i);
         if (molecule.getAtomLabel(n) === 'O' && molecule.getConnBondOrder(carbon, i) === 2) {
-          molecule.inventCoordinates();
           return { attachAtom: a, attachment: '' };
         }
       }
@@ -193,23 +211,127 @@ function conjugate(molecule, join) {
   throw new Error(`unknown join "${join}"`);
 }
 
+/**
+ * Resolve a data-described linear repeat to atom indices for `deneb/chem`.
+ * The metadata names chemistry (`O,C,C` repeated eight times), not PubChem's
+ * current atom numbering, so refreshing a record does not silently move it.
+ */
+function repeatUnitsFor(molecule, repeats = []) {
+  molecule.ensureHelperArrays(Molecule.cHelperNeighbours);
+  return repeats.map((repeat) => {
+    if (!Array.isArray(repeat.motif) || repeat.motif.length === 0 || repeat.count <= 0) {
+      throw new Error('repeat metadata needs a non-empty motif and a positive count');
+    }
+    const wanted = Array.from({ length: repeat.count }, () => repeat.motif).flat();
+    const candidates = [];
+    const visit = (path) => {
+      if (path.length === wanted.length) {
+        const selected = new Set(path);
+        const exits = path.flatMap((atom) =>
+          Array.from({ length: molecule.getAllConnAtoms(atom) }, (_, i) =>
+            molecule.getConnAtom(atom, i),
+          ).filter((atom) => !selected.has(atom)),
+        );
+        if (exits.length === 2 && exits[0] !== exits[1]) candidates.push({ path, exits });
+        return;
+      }
+      const atom = path[path.length - 1];
+      for (let i = 0; i < molecule.getAllConnAtoms(atom); i++) {
+        const next = molecule.getConnAtom(atom, i);
+        if (path.includes(next) || molecule.getAtomLabel(next) !== wanted[path.length]) continue;
+        if (molecule.getConnBondOrder(atom, i) !== 1 || molecule.getAllConnAtoms(next) !== 2) continue;
+        visit([...path, next]);
+      }
+    };
+    for (let atom = 0; atom < molecule.getAllAtoms(); atom++) {
+      if (molecule.getAtomLabel(atom) !== wanted[0] || molecule.getAllConnAtoms(atom) !== 2) continue;
+      visit([atom]);
+    }
+    const constrained = repeat.exits
+      ? candidates.filter(({ exits }) =>
+          repeat.exits.every(
+            (wantedExit, index) =>
+              (wantedExit.element == null ||
+                molecule.getAtomLabel(exits[index]) === wantedExit.element) &&
+              (wantedExit.degree == null ||
+                molecule.getAllConnAtoms(exits[index]) === wantedExit.degree),
+          ),
+        )
+      : candidates;
+    const forward = constrained.filter(({ path }) =>
+      path.every((atom, index) => index === 0 || atom > path[index - 1]),
+    );
+    const selected =
+      constrained.length === 1
+        ? constrained[0].path
+        : forward.length === 1
+          ? forward[0].path
+          : null;
+    if (!selected) {
+      throw new Error(
+        `expected one ${repeat.motif.join('-')} x ${repeat.count} path, ` +
+          `found ${candidates.length} (${constrained.length} matching exits)`,
+      );
+    }
+    return { atoms: selected, unit: repeat.unit, count: repeat.count };
+  });
+}
+
+/** Match a curated scaffold onto a larger molecule and pin its 2D coordinates. */
+function coordinateTemplateFor(molecule, source) {
+  if (!source) return undefined;
+  const scaffold = Molecule.fromMolfile(readFileSync(resolve(lib, source.file), 'utf8'));
+  const parsed = scaffold.getMolecularFormula().formula;
+  if (!sameFormula(parsed, source.formula)) {
+    throw new Error(`${source.label}: Molfile parses as ${parsed}, expected ${source.formula}`);
+  }
+  scaffold.setFragment(true);
+  const searcher = new SSSearcher();
+  searcher.setMolecule(molecule);
+  searcher.setFragment(scaffold);
+  searcher.findFragmentInMolecule();
+  const matches = searcher.getMatchList() ?? [];
+  if (matches.length !== 1) {
+    throw new Error(`${source.label}: expected one scaffold match, found ${matches.length}`);
+  }
+  const positions = {};
+  for (let atom = 0; atom < scaffold.getAtoms(); atom++) {
+    const target = matches[0][atom];
+    positions[target] = { x: scaffold.getAtomX(atom), y: scaffold.getAtomY(atom) };
+  }
+  return { positions, strength: source.strength ?? 'keep' };
+}
+
 /** A moiety, drawn and ready for `payload.structure`. */
 export function structureFor(name, { side = 'right', size = 260 } = {}) {
   const entry = MOIETIES[name];
   if (!entry) {
     throw new Error(`no moiety "${name}"; one of ${Object.keys(MOIETIES).join(', ')}`);
   }
-  const molecule = Molecule.fromSmiles(entry.smiles);
+  const molecule = entry.drawingSource
+    ? Molecule.fromMolfile(readFileSync(resolve(lib, entry.drawingSource.file), 'utf8'))
+    : Molecule.fromSmiles(entry.smiles);
   const parsed = molecule.getMolecularFormula().formula;
   if (!sameFormula(parsed, entry.formula)) {
-    throw new Error(`${name}: SMILES parses as ${parsed}, PubChem says ${entry.formula}`);
+    throw new Error(`${name}: drawing parses as ${parsed}, PubChem says ${entry.formula}`);
   }
   const { attachAtom, attachment } = conjugate(molecule, entry.join);
+  const repeatUnits = repeatUnitsFor(molecule, entry.repeats);
+  const scaffoldReference = coordinateTemplateFor(molecule, entry.coordinateSource);
+  const coordinateTemplate = entry.drawingSource ? undefined : scaffoldReference;
+  const sources = [`PubChem CID ${entry.cid}`];
+  if (entry.drawingSource) sources.push(`${entry.drawingSource.label} coordinates`);
+  else if (entry.coordinateSource) sources.push(`${entry.coordinateSource.label} coordinates`);
   const structure = structureFromMolecule(molecule, {
     attachAtom,
     side,
     size,
-    caption: `${name} — ${entry.what}, PubChem CID ${entry.cid}`,
+    coordinateTemplate,
+    coordinateMode: entry.drawingSource ? 'preserve' : 'invent',
+    orientation: entry.drawingSource ? 'drawing' : 'bond',
+    repeatUnits,
+    stereoAnnotations: 'full',
+    caption: `${name} — ${entry.what}, ${sources.join('; ')}`,
   });
   return { structure, attachment };
 }

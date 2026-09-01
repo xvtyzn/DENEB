@@ -435,8 +435,9 @@ describe('payload structures', () => {
   });
 
   it('brackets the linker-payload with the drug-to-antibody ratio', () => {
-    const { svg } = renderSVG(
-      {
+    const withDar = (dar?: number) =>
+      renderSVG(
+        {
         chains: [
           {
             id: 'C1',
@@ -449,7 +450,7 @@ describe('payload structures', () => {
                     type: 'drug' as const,
                     payload: {
                       name: 'P',
-                      dar: 8,
+                      ...(dar == null ? {} : { dar }),
                       structure: { svg: '<circle cx="5" cy="5" r="4"/>', viewBox: '0 0 10 10' },
                     },
                   },
@@ -458,11 +459,13 @@ describe('payload structures', () => {
             ],
           },
         ],
-      },
-      { showStructures: 'inline' },
-    );
-    expect((svg.match(/class="dn-payload-bracket"/g) ?? []).length).toBe(2);
-    expect(svg).toContain('>n = 8<');
+        },
+        { showStructures: 'inline', showLegend: false },
+      );
+    const labelled = withDar(8);
+    expect((labelled.svg.match(/class="dn-payload-bracket"/g) ?? []).length).toBe(2);
+    expect(labelled.svg).toContain('>n = 8<');
+    expect(labelled.scene.viewBox.width).toBeGreaterThan(withDar().scene.viewBox.width);
   });
 
   it('spells the chemistry out at one site and marks the rest with glyphs', () => {

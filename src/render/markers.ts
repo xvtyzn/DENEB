@@ -345,7 +345,13 @@ function extentOf(
       // reserving a page of blank paper underneath.
       const tip = dir * (ctx.width / 2 + baseStalk(attachmentLabel(r.payload, true)) + (reach.get(r) ?? 0));
       const pad = ctx.showPayloadNames ? 16 : 6;
-      for (const x of [drawn.x - 4, drawn.x + drawn.width + 4]) {
+      const darWidth =
+        r.payload?.dar == null
+          ? 4
+          : `n = ${r.payload.dar}`.length * (ctx.theme.legendSize - 1.5) * 0.6 + 7;
+      const leftPad = extendRight ? 4 : darWidth;
+      const rightPad = extendRight ? darWidth : 4;
+      for (const x of [drawn.x - leftPad, drawn.x + drawn.width + rightPad]) {
         for (const y of [drawn.y - 4, drawn.y + drawn.height + pad]) {
           const local = rotate({ x, y }, -ctx.rotation);
           box.minX = Math.min(box.minX, tip + local.x);

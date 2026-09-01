@@ -13,6 +13,20 @@
       "cid": 92131096,
       "what": "MCC-DM1",
       "join": "nhs-ester",
+      "drawingSource": {
+        "file": "mcc-dm1-pubchem.mol",
+        "label": "PubChem CID 92131096 2D record",
+        "formula": "C51H66ClN5O16S",
+        "url": "https://pubchem.ncbi.nlm.nih.gov/compound/92131096",
+        "retrieved": "2026-09-01"
+      },
+      "coordinateSource": {
+        "file": "mertansine-chebi.mol",
+        "label": "ChEBI CHEBI:82755",
+        "formula": "C35H48ClN3O10S",
+        "url": "https://www.ebi.ac.uk/chebi/CHEBI:82755",
+        "retrieved": "2026-09-01"
+      },
       "formula": "C51H66ClN5O16S",
       "smiles": "C[C@@H]1[C@@H]2C[C@]([C@@H](/C=C/C=C(/CC3=CC(=C(C(=C3)OC)Cl)N(C(=O)C[C@@H]([C@]4([C@H]1O4)C)OC(=O)[C@H](C)N(C)C(=O)CCSC5CC(=O)N(C5=O)CC6CCC(CC6)C(=O)ON7C(=O)CCC7=O)C)\\C)OC)(NC(=O)O2)O"
     },
@@ -27,6 +41,35 @@
       "cid": 89983570,
       "what": "CL2A-SN-38",
       "join": "maleimide",
+      "drawingSource": {
+        "file": "cl2a-sn38-pubchem.mol",
+        "label": "PubChem CID 89983570 2D record",
+        "formula": "C73H97N11O22",
+        "url": "https://pubchem.ncbi.nlm.nih.gov/compound/89983570",
+        "retrieved": "2026-09-01"
+      },
+      "repeats": [
+        {
+          "motif": [
+            "O",
+            "C",
+            "C"
+          ],
+          "unit": "–O–CH₂–CH₂–",
+          "count": 8,
+          "fontSize": 12,
+          "exits": [
+            {
+              "element": "C",
+              "degree": 2
+            },
+            {
+              "element": "N",
+              "degree": 2
+            }
+          ]
+        }
+      ],
       "formula": "C73H97N11O22",
       "smiles": "CCC1=C2CN3C(=CC4=C(C3=O)COC(=O)[C@@]4(CC)OC(=O)OCC5=CC=C(C=C5)NC(=O)[C@H](CCCCN)NC(=O)COCC(=O)NCCOCCOCCOCCOCCOCCOCCOCCOCCN6C=C(N=N6)CNC(=O)C7CCC(CC7)CN8C(=O)C=CC8=O)C2=NC9=C1C=C(C=C9)O"
     },
@@ -48,6 +91,17 @@
       "cid": 73672523,
       "what": "mal-PEG8-Val-Ala-PABC-PBD dimer",
       "join": "maleimide",
+      "repeats": [
+        {
+          "motif": [
+            "O",
+            "C",
+            "C"
+          ],
+          "unit": "–O–CH₂–CH₂–",
+          "count": 8
+        }
+      ],
       "formula": "C75H101N9O23",
       "smiles": "CC1=CN2[C@@H](C1)C=NC3=CC(=C(C=C3C2=O)OC)OCCCCCOC4=C(C=C5C(=C4)N([C@H]([C@@H]6CC(=CN6C5=O)C)O)C(=O)OCC7=CC=C(C=C7)NC(=O)[C@H](C)NC(=O)[C@H](C(C)C)NC(=O)CCOCCOCCOCCOCCOCCOCCOCCOCCNC(=O)CCN8C(=O)C=CC8=O)OC"
     },

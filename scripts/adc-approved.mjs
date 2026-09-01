@@ -426,7 +426,7 @@ const html = `<!doctype html>
   body { margin: 0; padding: 24px; background: #f6f7f9; font: 14px/1.55 ui-sans-serif, system-ui, sans-serif; color: #1c222b; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   .lede { margin: 0 0 16px; max-width: 78ch; color: #4b5563; font-size: 13px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(600px, 100%), 1fr)); gap: 16px; }
   .card { margin: 0; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 14px; }
   .card h2 { font-size: 13px; margin: 0 0 6px; }
   .inn { font-weight: 400; color: #6b7280; }
