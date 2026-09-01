@@ -121,6 +121,18 @@ describe('renderPanel', () => {
     expect(svg).toContain('variant 5');
     expect(svg).toContain('>Panel<');
   });
+
+  it('namespaces generated element ids in every cell', () => {
+    const { svg } = renderPanel([
+      { construct: first },
+      { construct: first, options: { idPrefix: 'comparison' } },
+    ]);
+    const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain('dn-panel-0-HC:0');
+    expect(ids).toContain('comparison-panel-1-HC:0');
+    expect(svg).toContain('data-domain-id="HC:0"');
+  });
 });
 
 describe('renderComparison', () => {

@@ -54,6 +54,41 @@ adc.chains[0].domains[2].modifications = [
   },
 ];
 
+const marketedAdc = (dsl, moiety) => {
+  const construct = parseDSL(dsl);
+  const { structure, attachment } = structureFor(moiety, { side: 'right' });
+  for (const chain of construct.chains) {
+    for (const domain of chain.domains) {
+      for (const modification of domain.modifications ?? []) {
+        if (!modification.payload) continue;
+        modification.payload.structure = structure;
+        modification.payload.attachment = attachment;
+      }
+    }
+  }
+  return construct;
+};
+
+const kadcyla = marketedAdc(
+  `
+    @name KADCYLA (ado-trastuzumab emtansine)
+    HC: VH(HER2)-CH1-h-CH2[drug=DM1/MCC/3.5/1/noncleavable]-CH3 *2
+    LC: VL(HER2)-CL *2
+    @isotype HC=IgG1
+  `,
+  'emtansine',
+);
+
+const trodelvy = marketedAdc(
+  `
+    @name TRODELVY (sacituzumab govitecan)
+    HC: VH(TROP-2)-CH1-h-CH2[drug=SN-38/CL2A carbonate/7.5/1/cleavable]-CH3 *2
+    LC: VL(TROP-2)-CL *2
+    @isotype HC=IgG1
+  `,
+  'govitecan',
+);
+
 // The parent, and the variant that answers what the linter says about it.
 const parent = getPreset('igg-kih');
 const fixed = parseDSL(`
@@ -79,6 +114,24 @@ const FIGURES = [
   {
     name: 'adc',
     svg: renderSVG(adc, { scale: 2.2 }).svg,
+  },
+  {
+    name: 'adc-layouts',
+    svg: renderPanel(
+      [
+        {
+          construct: kadcyla,
+          label: 'KADCYLA · MCC–DM1',
+          options: { showStructures: 'inline' },
+        },
+        {
+          construct: trodelvy,
+          label: 'TRODELVY · CL2A–SN-38',
+          options: { showStructures: 'inline' },
+        },
+      ],
+      { columns: 2, title: 'Preserved 2D coordinates and repeat notation', sharedLegend: false },
+    ).svg,
   },
   {
     name: 'linear',

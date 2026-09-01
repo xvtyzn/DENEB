@@ -123,6 +123,12 @@ chain, specificity or modification. Conjugated payloads can use built-in glyphs
 or trusted chemical artwork. Inline `payload.structure.svg` is inserted
 verbatim and unsanitised; use `href` for user-supplied artwork.
 
+ADC artwork can retain the source drawing's 2D coordinates, align an attachment
+bond when requested, and abbreviate linear repeats such as PEG without redrawing
+the retained fragments.
+
+[![KADCYLA and TRODELVY with source 2D coordinates and PEG repeat notation](docs/images/adc-layouts.png)](docs/images/adc-layouts.png)
+
 ## Optional Entry Points
 
 | Import | Purpose |
@@ -135,7 +141,7 @@ verbatim and unsanitised; use `href` for user-supplied artwork.
 | `deneb/import` | ANARCI and IgBLAST adapters |
 | `deneb/abml` | AbML v1.06 reader and writer |
 | `deneb/veritas` | VERITAS name reader and writer |
-| `deneb/chem` | Compound artwork, turned to face the antibody |
+| `deneb/chem` | Toolkit-compatible compound artwork, with coordinate and repeat control |
 
 The core entry is about 31 kB gzipped and is checked not to pull these optional
 areas into viewer-only applications.

@@ -120,6 +120,11 @@ const { svg } = renderSVG(construct);
 できます。`payload.structure.svg` はサニタイズせず埋め込まれるため、ユーザ入力由来の
 構造式には `href` を使用してください。
 
+ADC の構造式では、元の作図の 2D 座標を保持する、必要に応じて結合方向を揃える、
+PEG などの直鎖反復を残存部分の再作図なしで省略する、といった制御ができます。
+
+[![元の 2D 座標と PEG 反復表記を使った KADCYLA と TRODELVY](docs/images/adc-layouts.png)](docs/images/adc-layouts.png)
+
 ## 任意のサブパス
 
 | import | 内容 |
@@ -132,7 +137,7 @@ const { svg } = renderSVG(construct);
 | `deneb/import` | ANARCI / IgBLAST アダプタ |
 | `deneb/abml` | AbML v1.06 の読み書き |
 | `deneb/veritas` | VERITAS 名の読み書き |
-| `deneb/chem` | 化合物の作図。抗体を向くように回転させる |
+| `deneb/chem` | ツールキット互換の化合物作図。座標・向き・反復表記を制御 |
 
 コアは gzip 約 31 kB で、ビューアだけを使うアプリケーションへ任意機能を取り込まない
 ことを継続的に検査しています。

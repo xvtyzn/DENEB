@@ -251,11 +251,11 @@ ADC のペイロードは名前を書くだけでなく**図として描かれ�
 ラベルは重複を避けて省かれます。
 
 さらに隣の原子を `attachFrom` で指定すると、**その結合が抗体からの結合線の
-まっすぐな続きになるように描画が回転します**。指定しないと、分子は作図ツールが
-たまたま採った角度のまま抗体から生えるので、リンカーと化合物が一続きの鎖として
-読めなくなります。回転中も原子ラベルは正立に保たれます。回転は `mirror` に優先
-します — 回転は真の合同変換なので、反転と違って立体化学もラベルの読み順も
-壊しません。
+まっすぐな続きになるように描画が回転します**。指定しなければ元の作図方向を保ちます。
+これは `deneb/chem` の `orientation: 'drawing'` のように構図を意図して保持する場合に
+有用です。自動生成した配置では `attachFrom` を指定し、リンカーと化合物を一続きの鎖として
+読めるようにしてください。回転中も原子ラベルは正立に保たれます。回転は `mirror` に優先
+します — 回転は真の合同変換なので、反転と違って立体化学もラベルの読み順も壊しません。
 
 化合物はそれがぶら下がるドメインよりずっと大きいので、外向きの面から出すだけでは
 足りません。傾いた Fab アームでは、それでも描画が抗体に重なります。そこで
@@ -359,10 +359,12 @@ payload.structure = structureFromMolecule(
 `size` は描画の**長辺**（既定 150 図単位）です。もう一方は分子の形から決まるので、
 たまたま縦長に描かれた化合物が抗体の倍の高さになることはありません。
 
-分子のコピーに不足している抗体側の結合を一時的に加え、結合原子が抗体を向くように
-そのコピーを回してから OpenChemLib で描画します。これにより末端の硫黄・窒素は遊離
-した `SH` / `NH2` ではなく結合後の原子価で描かれ、結合線も原子ラベルを横切りません。
-呼び出し元の分子と座標は変更しません。
+入力分子のコピーだけを操作します。既定の `coordinateMode: 'invent'` では互換
+ツールキットがコピーの座標を作り、`coordinateMode: 'preserve'` では渡された 2D 座標を
+保持します。既定の `orientation: 'bond'` は抗体側の結合線へ結合方向を揃え、
+`orientation: 'drawing'` は元の作図方向を保ちます。作図時だけ追加する抗体側の結合により、
+末端硫黄や窒素は遊離した `SH` / `NH2` ではなく結合後の原子価で描かれ、結合線も原子
+ラベルを横切りません。呼び出し元の分子と座標は変更しません。
 
 ツールキットは **import ではなく引数で渡します**。実行時依存が増えず、OpenChemLib の
 特定バージョンにも縛られません。`DepictableMolecule` は利用する OpenChemLib 互換
@@ -372,7 +374,7 @@ payload.structure = structureFromMolecule(
 座標生成は選択できます。既定の `coordinateMode: 'invent'` はツールキットで座標を
 作り直します。Molfile や作図エディタで調整済みの 2D 座標を使う場合は
 `coordinateMode: 'preserve'` を指定します。既定では抗体からの結合線に合わせて分子全体を
-剛体回転します。Molfile全体の横長・縦長といった作図方向も維持する場合は
+剛体回転します。Molfile 全体の横長・縦長といった作図方向も維持する場合は
 `orientation: 'drawing'` を追加します。認識しやすい骨格だけを保持して、新しい置換基を
 自動配置する場合は、呼び出し元の原子番号をキーにした `coordinateTemplate` を渡します。
 
@@ -478,11 +480,11 @@ importer・AbML／VERITAS アダプタのいずれにも到達しません（ソ
 | `deneb/presets` | 12 kB | 同梱 49 フォーマット |
 | `deneb/lint` | 13 kB | 設計チェック |
 | `deneb/diff` | 12 kB | 親／変異体の比較 |
-| `deneb/panel` | 33 kB | 複数分子の図版 |
+| `deneb/panel` | 34 kB | 複数分子の図版 |
 | `deneb/import` | 3.5 kB | ANARCI / IgBLAST アダプタ |
 | `deneb/abml` | 14 kB | AbML 記法の読み書き |
 | `deneb/veritas` | 15 kB | VERITAS フォーマット名の読み書き |
-| `deneb/chem` | 2 kB | OpenChemLib 描画アダプタ |
+| `deneb/chem` | 4.2 kB | OpenChemLib 互換の描画アダプタ |
 
 ### 設計チェック（lint）
 
@@ -538,7 +540,8 @@ const { svg } = renderPanel(items, { columns: 3, title: 'Bispecific formats' });
 **色は図版全体で一度だけ割り当てられます。** 個別に描くと各 construct が標的を
 最初から番号付けし直すので、2 番目のセルの CD3 が 1 番目のセルの HER2 と同じ色に
 なります。パネルは標的の色が通しで一定でなければ読めません。セルは同一縮尺で
-描かれ、凡例は 1 つだけです。
+描かれ、凡例は 1 つだけです。生成する DOM の `id` はセルごとに自動で名前空間化し、
+`data-domain-id` はイベント処理に使う construct 本来の論理 ID を保持します。
 
 ### 配列から始める
 
@@ -658,6 +661,7 @@ npm run gallery      # ビルドして examples/gallery.html を生成
 npm run adc-demo     # ビルドして examples/adc.html を生成
 npm run adc-approved # ビルドして examples/adc-approved.html を生成
 npm run moieties     # scripts/lib/moieties.json を PubChem から再取得
+npm run adc-labels   # scripts/lib/adc-labels.json を openFDA から再取得
 npm run panel-demo   # ビルドして examples/panel.html を生成
 npm run size         # 各エントリの実サイズと、コアが optional 領域を
                      # 抱え込んでいないかの検査
@@ -667,11 +671,11 @@ npm run check-exports  # 使う側のプロジェクトを一時的に作り、�
 npm run constant-regions   # UniProt からリファレンスを再取得
 ```
 
-`scripts/adc-demo.mjs` はコンジュゲートの流れを端から端まで示します。SMILES を
-OpenChemLib（このリポジトリの devDependency であり、ライブラリの依存ではありません）
-で描画に変換し、`payload.structure` に渡しています。warhead を含む完全な
-リンカー–ペイロード部分を PubChem から CID 指定で取得しています。別のペイロードの
-SMILES に差し替えれば図もそのまま追随します。
+`scripts/adc-demo.mjs` はコンジュゲートの流れを端から端まで示します。OpenChemLib
+（このリポジトリの devDependency であり、ライブラリの依存ではありません）で PubChem の
+結合情報を読み、`payload.structure` に渡します。記録済みの完全な PubChem 2D レコードは
+その座標を保持し、それがない場合は新規配置または任意の骨格テンプレートを使います。
+別の分子、作図レコード、座標テンプレートに差し替えれば図も追随します。
 
 `scripts/adc-approved.mjs` は、米国のラベルデータベースにある上市抗体コンジュゲート
 **全品目**（執筆時点で 16）を DSL で書き、リンカー–ペイロード全体を抗体の右側に
@@ -683,6 +687,10 @@ SMILES に差し替えれば図もそのまま追随します。
 INN の接尾辞そのもの（brentuximab **vedotin** の vedotin が mc-Val-Cit-PAB-MMAE）で、
 `npm run moieties` が PubChem から CID 指定で取得し、分子式が自身の InChI と食い違う
 レコードを拒否します。抗体との接続はその化学に従います。
+
+KADCYLA と TRODELVY は SMILES から座標を作り直さず、完全な PubChem 2D レコードを
+保持します。TRODELVY の PEG8 はデータで指定した経路だけを慣用的な反復表記へ置き換え、
+両側に残る構造を再作図しません。KADCYLA は ChEBI の DM1 レコードとも骨格を照合します。
 
 **すべての数値は、ページを書き出す前にラベル本文と照合されます。** DAR が改訂されれば
 古い図が残るのではなくビルドが落ちます。ラベルに書かれていない項目は他所から補わず、

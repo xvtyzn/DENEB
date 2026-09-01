@@ -330,8 +330,9 @@ the drawing already shows the atom and the bond it makes.
 
 Name the neighbouring atom too, as `attachFrom`, and the drawing is **turned**
 so that bond carries straight on from the bond coming off the antibody. Without
-it the molecule leaves the protein at whatever angle the depiction toolkit
-happened to lay it out at, and the linker and the compound stop reading as one
+it the source drawing direction is retained. That is useful when the composition
+is intentional (`orientation: 'drawing'` in `deneb/chem`); for an automatically
+generated layout, provide `attachFrom` so the linker and compound read as one
 chain. Atom labels are kept upright through the turn. Turning supersedes
 `mirror`: a rotation is a proper transform, so unlike a flip it cannot invert
 stereochemistry or reverse the reading order of a label.
@@ -379,11 +380,14 @@ payload.structure = structureFromMolecule(
 the other follows from the shape of the molecule, so a compound that happens to
 be laid out tall does not come out twice the height of the antibody.
 
-It works on a copy, adds the missing antibody bond while OpenChemLib lays out
-the depiction, and turns that copy so the conjugated atom faces the antibody.
-The added bond makes terminal sulfur and nitrogen render in their conjugated
-valence rather than as free SH or NH2, and makes the bond stop at the atom label
-instead of crossing it. The input molecule and its coordinates are unchanged.
+It works on a copy. In the default `coordinateMode: 'invent'`, the compatible
+toolkit lays out that copy; `coordinateMode: 'preserve'` instead keeps supplied
+2D coordinates. The default `orientation: 'bond'` aligns the attachment bond
+with DENEB's stalk, while `orientation: 'drawing'` keeps the source page
+direction. The added antibody bond makes terminal sulfur and nitrogen render in
+their conjugated valence rather than as free SH or NH2, and makes the bond stop
+at the atom label instead of crossing it. The input molecule and its coordinates
+are unchanged.
 
 The toolkit is **passed in rather than imported**, so this adds no runtime
 dependency and is not tied to one version of OpenChemLib. `DepictableMolecule`
@@ -571,11 +575,11 @@ VERITAS adapters — checked by
 | `deneb/presets` | 12 kB | the 49 bundled formats |
 | `deneb/lint` | 13 kB | design checks |
 | `deneb/diff` | 12 kB | parent/variant comparison |
-| `deneb/panel` | 33 kB | multi-molecule figures |
+| `deneb/panel` | 34 kB | multi-molecule figures |
 | `deneb/import` | 3.5 kB | ANARCI / IgBLAST adapters |
 | `deneb/abml` | 14 kB | AbML notation, read and written |
 | `deneb/veritas` | 15 kB | VERITAS format names, read and written |
-| `deneb/chem` | 2 kB | OpenChemLib depiction adapter |
+| `deneb/chem` | 4.2 kB | OpenChemLib-compatible depiction adapter |
 
 ### Design checks
 
@@ -641,7 +645,9 @@ Colours are assigned once across the whole figure. Rendered one at a time, each
 construct numbers its targets from scratch and the second cell's CD3 comes out
 the colour of the first cell's HER2; a panel is only readable if a target keeps
 one colour throughout. Cells are drawn at one scale so sizes can be compared,
-and there is one legend rather than one per cell.
+and there is one legend rather than one per cell. Generated DOM `id` values are
+automatically namespaced per cell, while `data-domain-id` keeps the construct's
+logical domain id for event handling.
 
 ### Starting from a sequence
 
@@ -849,11 +855,12 @@ npm run check-exports  # compile a throwaway consumer against every subpath
 npm run constant-regions   # refetch the UniProt reference data
 ```
 
-`scripts/adc-demo.mjs` shows the whole conjugate path end to end: it turns a
-SMILES string into a depiction with OpenChemLib — a devDependency of this repo,
-never of the library — and hands the result to `payload.structure`. Its complete
-linker-payload moieties, including their warheads, are fetched from PubChem by
-CID. Swap in another payload's SMILES and the drawings follow.
+`scripts/adc-demo.mjs` shows the whole conjugate path end to end. OpenChemLib — a
+devDependency of this repo, never of the library — loads PubChem connectivity and
+hands the result to `payload.structure`. A complete PubChem 2D record is retained
+where recorded; otherwise a fresh layout or optional scaffold template is used.
+Swap in another molecule, drawing record or coordinate template and the figures
+follow.
 
 `scripts/adc-approved.mjs` writes every marketed antibody conjugate the US
 label database has — sixteen at the time of writing — in the notation, with the
@@ -867,6 +874,11 @@ fetch and not a scrape. The compounds are the INN suffixes — the `-vedotin` of
 brentuximab vedotin *is* mc-Val-Cit-PAB-MMAE — fetched from PubChem by CID with
 `npm run moieties`, which refuses a record whose formula disagrees with its own
 InChI, and joined to the antibody by their own chemistry.
+
+KADCYLA and TRODELVY retain complete PubChem 2D records instead of recreating
+their coordinates from SMILES. TRODELVY's PEG8 path is data-described and
+replaced by conventional repeat notation without redrawing either retained
+fragment; KADCYLA also checks the DM1 scaffold against its ChEBI record.
 
 **Every number is checked against its label before the page is written**, so a
 revision that changes a DAR fails the build rather than leaving a stale figure.

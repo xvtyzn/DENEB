@@ -55,10 +55,14 @@ export function renderPanel(items: PanelItem[], options: PanelOptions = {}): Pan
   const colorMode = options.colorMode ?? 'specificity';
   const shared = sharedSpecificities(items, theme);
 
-  const scenes = items.map((item) => {
+  const scenes = items.map((item, index) => {
     const construct = withSpecificities(item.construct, shared);
+    const idPrefix = item.options?.idPrefix
+      ? `${item.options.idPrefix}-panel-${index}`
+      : `dn-panel-${index}`;
     return buildScene(construct, {
       ...item.options,
+      idPrefix,
       theme: options.theme,
       colorMode,
       showLegend: false,
