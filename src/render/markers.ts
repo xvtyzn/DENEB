@@ -26,9 +26,15 @@ export interface ResolvedModification {
   /** One-line summary for the legend: residues, or the payload's details. */
   detail: string;
   domainId: string;
+  /** Position in the owning domain's `modifications`, when it is known. */
+  index?: number;
 }
 
-export function resolveModification(m: Modification, domainId: string): ResolvedModification {
+export function resolveModification(
+  m: Modification,
+  domainId: string,
+  index?: number,
+): ResolvedModification {
   const catalog = MODIFICATION_CATALOG[m.type] ?? MODIFICATION_CATALOG.custom;
   const residues = m.residues ?? catalog.residues ?? [];
   const payload = m.payload;
@@ -44,6 +50,7 @@ export function resolveModification(m: Modification, domainId: string): Resolved
     domainId,
   };
   if (payload) resolved.payload = payload;
+  if (index != null) resolved.index = index;
   return resolved;
 }
 
@@ -143,6 +150,8 @@ export interface DecorateContext {
   showPayloadNames: boolean;
   /** Put the structure depiction at the end of the stalk instead of the glyph. */
   inlineStructures: boolean;
+  /** Let marks receive pointer events, so a conjugation site can be clicked. */
+  interactiveMarkers?: boolean;
   /** Centre of the glyph in world coordinates. Needed for clearance tests. */
   center?: Point;
   /**
@@ -267,7 +276,7 @@ export interface DomainDecorations {
  * drug molecules rather than an antibody with extra dots on it.
  */
 export function decorate(domain: NDomain, ctx: DecorateContext): DomainDecorations {
-  const resolved = domain.modifications.map((m) => resolveModification(m, domain.id));
+  const resolved = domain.modifications.map((m, i) => resolveModification(m, domain.id, i));
   // Worked out once and shared: the room the drawing needs and where it ends up
   // have to be the same number, or the picture is cropped through its own
   // chemistry.
@@ -361,7 +370,7 @@ function extentOf(
         }
       }
     } else if (r.marker === 'drug') {
-      const name = ctx.showPayloadNames ? (r.payload?.name.length ?? 0) * 5 + 6 : 0;
+      const name = ctx.showPayloadNames ? (r.payload?.name?.length ?? 0) * 5 + 6 : 0;
       grow(dir, 24 + name, 10);
     } else {
       grow(dir, 14, 10);
@@ -418,7 +427,14 @@ function markerNodes(
 ): SceneNode[] {
   const data: Record<string, string> = { 'modification-type': r.type };
   if (r.payload?.name) data['payload'] = r.payload.name;
-  const common = { className: 'dn-marker', data, pointerEvents: 'none' as const };
+  // Which of the domain's modifications this mark is, so a click can name the
+  // one it landed on. Two payloads of the same compound on one domain are
+  // otherwise indistinguishable in the DOM. Only written when the scene is
+  // meant to be clicked, so a diagram that is only read is unchanged.
+  if (ctx.interactiveMarkers && r.index != null) data['modification-index'] = String(r.index);
+  const common: MarkStyle = ctx.interactiveMarkers
+    ? { className: 'dn-marker', data }
+    : { className: 'dn-marker', data, pointerEvents: 'none' };
 
   switch (r.marker) {
     case 'dot':
@@ -584,6 +600,13 @@ function markerNodes(
   }
 }
 
+/** Shared style for every mark: class, identity, and whether it can be clicked. */
+type MarkStyle = {
+  className: string;
+  data: Record<string, string>;
+  pointerEvents?: 'none';
+};
+
 /** Stalk (the chemical linker) plus the payload glyph and its name. */
 function payloadNodes(
   r: ResolvedModification,
@@ -591,7 +614,7 @@ function payloadNodes(
   y: number,
   dir: 1 | -1,
   ctx: DecorateContext,
-  common: { className: string; data: Record<string, string>; pointerEvents: 'none' },
+  common: MarkStyle,
   withName: boolean,
   reach = 0,
 ): SceneNode[] {

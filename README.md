@@ -28,7 +28,9 @@ consistent.
   remain available without injecting the complete SVG as HTML.
 - Cartoon, linear architecture and standalone legend views.
 - 49 presets covering common bispecific, fragment, Fc-fusion and ADC formats.
-- Optional lint, diff, panel, sequence-import, AbML and VERITAS entry points.
+- Enough to build a click-to-edit interface on: an edit is held exactly as made,
+  and what is still missing is reported by lint rather than guessed at.
+- Optional edit, lint, diff, panel, sequence-import, AbML and VERITAS entry points.
 
 ## Install
 
@@ -134,16 +136,18 @@ the retained fragments.
 | Import | Purpose |
 | --- | --- |
 | `deneb/react` | React viewers and sequence view |
-| `deneb/presets` | Bundled construct catalogue |
-| `deneb/lint` | Design checks with highlightable references |
+| `deneb/presets` | Bundled construct catalogue and editing templates |
+| `deneb/edit` | Held edits, and pairing decided only where the notation decides it |
+| `deneb/react/editor` | The editing hook, headless |
+| `deneb/lint` | Design and completeness checks, with highlightable references |
 | `deneb/diff` | Parent/variant comparison |
 | `deneb/panel` | Multi-molecule figures |
-| `deneb/import` | ANARCI and IgBLAST adapters |
+| `deneb/import` | ANARCI, IgBLAST and Thera-SAbDab adapters |
 | `deneb/abml` | AbML v1.06 reader and writer |
 | `deneb/veritas` | VERITAS name reader and writer |
 | `deneb/chem` | Toolkit-compatible compound artwork, with coordinate and repeat control |
 
-The core entry is about 31 kB gzipped and is checked not to pull these optional
+The core entry is about 32 kB gzipped and is checked not to pull these optional
 areas into viewer-only applications.
 
 ## Try It

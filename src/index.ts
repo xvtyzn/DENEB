@@ -16,6 +16,8 @@ export type {
   NChain,
   NDomain,
   NormalizedConstruct,
+  PairingResolution,
+  PairingRule,
   Payload,
   PayloadShape,
   PayloadStructure,

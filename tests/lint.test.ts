@@ -162,3 +162,64 @@ describe('lint findings are usable', () => {
     }
   });
 });
+
+describe('completeness rules', () => {
+  const rules = (dsl: string, options?: Parameters<typeof lint>[1]) =>
+    lint(parseDSL(dsl), { categories: ['completeness'], ...options }).map((f) => f.rule);
+
+  it.each(presetNames())('%s trips none of them', (name) => {
+    expect(lint(getPreset(name), { categories: ['completeness'] })).toEqual([]);
+  });
+
+  it('flags a constant domain with no partner', () => {
+    expect(rules('HC: VH(X)-CH1\nLC: VL(X)')).toContain('unpaired-constant-domain');
+  });
+
+  it('flags a Fab whose halves do not add up', () => {
+    expect(rules('HC: VH(X)-CH1-h-CH2-CH3\nLC: VL(X)')).toContain('light-chain-count-mismatch');
+  });
+
+  it('flags a conjugation with fields still blank', () => {
+    expect(rules('HC: VH(X)-CH1-h-CH2[drug=MMAE]-CH3\nLC: VL(X)-CL')).toContain(
+      'conjugation-underspecified',
+    );
+  });
+
+  it('flags an engineered cysteine with nothing on it', () => {
+    expect(rules('HC: VH(X)-CH1-h-CH2[thiomab]-CH3\nLC: VL(X)-CL')).toContain(
+      'conjugation-handle-unused',
+    );
+  });
+
+  it('flags a chain that cannot appear in the picture', () => {
+    expect(rules('HC: VH(X)-CH1\nLC: VL(X)-CL\nX: h')).toContain('domain-not-drawn');
+  });
+
+  it('flags the Fab shorthand on a repeated chain', () => {
+    expect(rules('HC: VH(A)-CH1-h-CH2-CH3-L-Fab(B) *2\nLC: VL(A)-CL *2')).toContain(
+      'fab-macro-under-copies',
+    );
+  });
+
+  it('flags one arm taking the other arm\'s partner', () => {
+    // What today's inference does to an IgG with a C-terminal Fab.
+    const construct = normalize(
+      parseDSL(`
+        HC: VH(A)-CH1-h-CH2-CH3-VH(B)-CH1 *2
+        LC1: VL(A)-CL *2
+        LC2: VL(B)-CL *2
+      `),
+    );
+    expect(lint(construct).map((f) => f.rule)).toContain('pairing-crosses-copies');
+  });
+
+  it('can be asked for design rules alone', () => {
+    const findings = lint(parseDSL('HC: VH(X)-CH1\nLC: VL(X)'), { categories: ['design'] });
+    expect(findings.map((f) => f.rule)).not.toContain('unpaired-constant-domain');
+  });
+
+  it('can fold normalize diagnostics into the same list', () => {
+    const findings = lint(parseDSL('C1: VH(X)'), { includeDiagnostics: true });
+    expect(findings.some((f) => f.rule.startsWith('normalize/'))).toBe(true);
+  });
+});

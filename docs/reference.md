@@ -187,6 +187,14 @@ That matters when the input is machine-generated and occasionally incomplete.
   CH2/CH3/CH4 dimerise between the first two heavy chains. Note the third rule:
   drop the target names from a CODV-Ig and it becomes a DVD-Ig, because nothing
   is left to cross on. `@pair` states it outright.
+
+  The positional walk is a heuristic, and it is wrong on formats with a Fab
+  appended after the Fc: it hands the first light chain to the second heavy
+  chain and then has nothing left for the rest. Pass
+  `{ pairing: 'explicit' }` to stop after the links that were actually written
+  and let `deneb/edit`'s `resolvePairing` decide the rest — it reaches the
+  right answer there, and where the notation genuinely does not say, it makes
+  no choice and reports the alternatives.
 - **What is left over.** A variable or constant domain that ends up with no
   partner is reported (`unpaired-variable-domain`, `unpaired-constant-domain`) —
   correct for a VHH, and usually a mistake for a CH1. More than two chains
@@ -563,25 +571,27 @@ raw domain id — handy for linking the diagram to a sequence viewer.
 ## Beyond the viewer
 
 Everything past drawing lives behind its own subpath, so a page that only
-renders a diagram never loads any of it. The core entry is about 31 kB gzipped and
-does not reach the presets, the linter, the diff, the importers, or the AbML and
-VERITAS adapters — checked by
+renders a diagram never loads any of it. The core entry is about 32 kB gzipped and
+does not reach the presets, the editor, the linter, the diff, the importers, or
+the AbML and VERITAS adapters — checked by
 `tests/boundaries.test.ts` in source and by `npm run size` in the built output.
 
 | Import | Gzipped | What it is |
 | --- | --- | --- |
-| `deneb` | 31 kB | model, notation, layout, renderers |
-| `deneb/react` | 34 kB | the components |
-| `deneb/presets` | 12 kB | the 49 bundled formats |
-| `deneb/lint` | 13 kB | design checks |
+| `deneb` | 32 kB | model, notation, layout, renderers |
+| `deneb/react` | 36 kB | the components |
+| `deneb/presets` | 13 kB | the 49 bundled formats |
+| `deneb/edit` | 15 kB | editing, and deciding what the notation determines |
+| `deneb/react/editor` | 21 kB | the editing hook |
+| `deneb/lint` | 15 kB | design and completeness checks |
 | `deneb/diff` | 12 kB | parent/variant comparison |
 | `deneb/panel` | 34 kB | multi-molecule figures |
-| `deneb/import` | 3.5 kB | ANARCI / IgBLAST adapters |
+| `deneb/import` | 5.7 kB | ANARCI / IgBLAST / Thera-SAbDab adapters |
 | `deneb/abml` | 14 kB | AbML notation, read and written |
 | `deneb/veritas` | 15 kB | VERITAS format names, read and written |
 | `deneb/chem` | 4.2 kB | OpenChemLib-compatible depiction adapter |
 
-### Design checks
+### Design and completeness checks
 
 ```ts
 import { lint } from 'deneb/lint';
@@ -591,12 +601,28 @@ for (const finding of lint(construct)) {
 }
 ```
 
-These are checks on the design, not on the drawing: two different light chains
-with nothing steering each to its own heavy chain, a knob with no hole, a CD3
-engager whose Fc has not been silenced, an IgG4 hinge that will exchange arms,
-a non-positive DAR or one above the built-in 0–8 screening range. Each finding
-carries `refs` in the form
-`highlight` takes, so a UI can light up exactly what the message is about.
+There are two kinds. **Design** rules are about the molecule: two different
+light chains with nothing steering each to its own heavy chain, a knob with no
+hole, a CD3 engager whose Fc has not been silenced, an IgG4 hinge that will
+exchange arms, a non-positive DAR or one above the built-in 0–8 screening range.
+**Completeness** rules are about the description: a constant domain with no
+partner, a domain that could pair with more than one thing, one arm holding the
+other arm's light chain, a conjugation site whose compound has not been chosen,
+a chain that cannot appear in the picture at all. Each finding carries `refs`
+in the form `highlight` takes, so a UI can light up exactly what the message is
+about.
+
+Both run by default. Ask for one kind with `categories`, and fold in the
+diagnostics `normalize` produced with `includeDiagnostics`, so an interface has
+one list to show rather than two:
+
+```ts
+lint(construct, { categories: ['completeness'], includeDiagnostics: true });
+```
+
+`ambiguous-pairing` reads a field only `deneb/edit` fills in, so pass it the
+construct `resolvePairing` worked on — `lint` re-normalizes anything raw, and
+that would throw the answer away.
 
 Rules that rely on naming or broad screening assumptions are marked `heuristic`
 in `LINT_RULES` and can be turned off. For example:
@@ -606,6 +632,116 @@ lint(construct, { disable: ['effector-active-engager', 'dar-out-of-range'] });
 ```
 
 Severity is adjustable the same way.
+
+### Editing a format
+
+```ts
+import { applyEdit, expandForEditing, resolvePairing, editTargets } from 'deneb/edit';
+```
+
+The viewer infers a great deal — which domains pair, which light chain belongs
+to which arm — and that inference is what makes the notation short. It is also
+what makes the notation hard to edit: a guess that was right before an edit can
+be wrong after it, and nothing says so. The picture simply changes.
+
+`deneb/edit` takes the other position, and it does so in three steps.
+
+**Make the shorthand concrete.** `expandForEditing(construct)` turns `copies`
+and the `Fab`/`scFv` macros into real chains, and gives every domain the
+explicit id it would otherwise have been given implicitly — the same string, so
+the picture does not change and links keep meaning what they meant. Without it a
+domain is addressed by its position, and inserting one renumbers every domain
+after it, silently re-pointing the `@pair` lines that referred to them. Copies
+that exist because a shorthand asked for them are materialised; the copy of a
+light chain that exists because another one was *missing* is not, so a common
+light chain goes on being shared.
+
+**Apply exactly what was asked.** `applyEdit(construct, edit)` returns a new
+construct and the refs it touched. It never adds anything the edit did not ask
+for: adding a VH does not conjure a VL, and adding a conjugation site does not
+invent a compound. `mirror: true` applies the same edit to every structurally
+identical chain, which is what "both arms" means once `*2` has been expanded.
+The one edit that brings something with it is `append-fab`, because a Fab means
+both halves — and it states the two pairs explicitly rather than leaving them
+to be worked out.
+
+```ts
+let construct = expandForEditing(getTemplate('igg1'));
+construct = applyEdit(construct, {
+  op: 'append-fab', chain: 'HC', specificity: 'CD3', mirror: true,
+}).construct;
+```
+
+The vocabulary matches the notation's: `set-pair` and `clear-pair` say what
+`@pair` says, `set-disulfide` and `clear-disulfide` say what `@ss` says, and
+`insert-domain` / `remove-domain` / `replace-domain` / `add-modification` /
+`add-conjugation` / `add-chain` / `remove-chain` / `set-specificity` / `rename`
+cover the rest.
+
+**Decide only what the construct determines.** Normalize with
+`{ pairing: 'explicit' }` — which stops after the links the author actually
+wrote — and hand the result to `resolvePairing`:
+
+```ts
+const resolved = normalize(construct, { pairing: 'explicit' });
+const report = resolvePairing(resolved);
+report.ambiguous;    // domains with more than one reading
+report.suggestions;  // [{ ref, candidates, hint: '@pair HC:6 LC2:1' }]
+```
+
+Where the answer follows from the construct it is taken, and where it does not
+nothing is chosen. On an IgG with a Fab appended after the Fc — four light
+chains, two heavy — the default inference hands the first light chain to the
+second heavy chain and then runs out, leaving six constant domains orphaned and
+one arm holding the other arm's light chain. Deciding from a clean slate gets
+all four Fabs right with no `@pair` lines at all. Where the targets are missing
+too, nothing is paired and every choice is reported, one suggestion per domain.
+
+On all 49 bundled formats the strict answer is identical to the inferred one
+and reports nothing, which is the test that keeps the two from drifting apart.
+
+**Menus and handles.** `editTargets(construct, ref | insertPoint)` builds the
+list of edits available at whatever was clicked, from the domain and
+modification catalogues, so an app never hard-codes what a domain can be.
+`insertionAnchors(layout)` gives a point for every gap a domain could go into,
+in the layout's coordinates — add `BuiltScene.transform` to place an overlay
+over the drawing. Pass `interactiveMarkers: true` to the scene to make
+conjugation marks and hinges clickable and to stamp each mark with
+`data-modification-index`; without it the drawing is byte-for-byte what it
+always was.
+
+### Editing in React
+
+```tsx
+import { useConstructEditor } from 'deneb/react/editor';
+
+function Editor() {
+  const { construct, resolved, findings, apply, undo, selection, select } =
+    useConstructEditor({ initial: getTemplate('igg1') });
+
+  return (
+    <>
+      <AntibodyViewer
+        construct={resolved}
+        interactiveMarkers
+        selection={selection}
+        onSelectionChange={(ref) => select(ref)}
+      />
+      <ul>{findings.map((f) => <li key={f.rule + f.ref}>{f.message}</li>)}</ul>
+    </>
+  );
+}
+```
+
+The hook holds the document, the history, the selection and the findings, and
+has no opinion about how any of it looks — the menu, the panel and the styling
+are yours. It is its own entry point rather than part of `deneb/react` because
+a page that only shows a diagram should not download the edit engine to do it.
+
+The editor's document is the `Construct`, not the DSL. `stringifyDSL` still
+writes a format out, but the DSL has no syntax for an explicit `Domain.id`, so
+a round trip through the text loses them and goes back to addressing domains by
+position. Keep the JSON and use the DSL to show and to share.
 
 ### Comparing a variant with its parent
 
@@ -670,6 +806,48 @@ CH1 / hinge / CH2 / CH3 boundaries come from UniProt (P01857, P01859, P01861,
 P01834, P0CG04) and are regenerated by `npm run constant-regions`, never typed
 by hand. Comparison is ungapped and anything below `minIdentity` is left as an
 unnamed segment with its range intact rather than guessed at.
+
+### Starting from a therapeutic
+
+```ts
+import { fromTheraSAbDab, parseTheraSAbDabCsv } from 'deneb/import';
+
+const rows = parseTheraSAbDabCsv(await (await fetch(DOWNLOAD)).text());
+for (const row of rows) {
+  const { construct, diagnostics } = fromTheraSAbDab(row);
+  if (construct.chains.length > 0) renderSVG(construct);
+}
+```
+
+[Thera-SAbDab](https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/therasabdab/)
+is the WHO's list of antibody therapeutics, and its `Format` column is the
+closest thing the field has to a controlled vocabulary for architecture. Each
+row also carries the heavy-chain class, the light-chain class and the target,
+which is everything a schematic needs. `fromTheraSAbDab` reads one row;
+`parseTheraSAbDabCsv` reads the download it comes from.
+
+Measured against the whole database — 1133 therapeutics — sixteen format rules
+draw **1015 of them (89.6%), including 190 approved drugs**, with nothing left
+ambiguous and no molecule failing to lay out. The rest of the column is free
+text describing one molecule each — `Bispecific ((G1_L-kappa)_scFv-G1(h-CH2-CH3))`
+says exactly what one therapeutic is and nothing about how to read the next one
+— and those rows are **declined with an error rather than guessed at**. The
+table is `THERA_FORMAT_RULES`, exported so it can be read and argued with.
+
+Three kinds of thing the database does not record, and what is done about each:
+
+| It does not say | What is drawn | What is said |
+| --- | --- | --- |
+| Where an ADC's linker attaches | the mark on CH2 | `thera-not-stated`: a place to put it, not a claim about a residue |
+| How a bispecific's heavy chains heterodimerize | nothing | `deneb/lint` then reports `homodimer-risk`, which is the right thing to say about a description that does not mention one |
+| Which interface a CrossMab crosses over | no crossover | `thera-not-stated`, naming the three it could be |
+
+The database is not vendored: it is someone else's dataset, revised as new INNs
+are proposed, and a copy inside the package would go quietly stale. Fetch it and
+measure the coverage with `npm run thera`; draw a page of it with
+`npm run thera-gallery` (`examples/thera.html`).
+
+Cite Raybould et al., *Nucleic Acids Research* 48:D383 (2020).
 
 ### AbML, read and written
 
@@ -764,7 +942,7 @@ either knowing about the other. CDRs from `Domain.regions` are underlined.
 
 ```ts
 // deneb — model + notation
-normalize(construct, { theme? }): NormalizedConstruct
+normalize(construct, { theme?, pairing? }): NormalizedConstruct
 parseDSL(source): Construct
 stringifyDSL(construct): string
 
@@ -781,6 +959,18 @@ toSVGString(scene): string
 // deneb/presets
 presetNames(): string[]
 getPreset(name): Construct
+TEMPLATE_NAMES: readonly TemplateName[]
+getTemplate(name): Construct          // an unshared copy, safe to edit
+
+// deneb/edit
+expandForEditing(construct): Construct
+applyEdit(construct, edit): { construct, touched }
+editTargets(construct, ref | insertPoint, options?): EditTarget[]
+resolvePairing(normalized): PairingReport
+insertionAnchors(layout): InsertionAnchor[]
+
+// deneb/react/editor
+useConstructEditor({ initial, lint?, onChange? }): ConstructEditor
 
 // deneb/lint
 lint(construct, options?): LintFinding[]
@@ -796,6 +986,10 @@ renderComparison(before, after, options?): { svg, scene, changes }
 // deneb/import
 fromANARCI(csv, options?): { construct, diagnostics }
 fromIgBLAST(airrTsv, options?): { construct, diagnostics }
+fromTheraSAbDab(row): { construct, diagnostics }
+parseTheraSAbDabCsv(csv): TheraSAbDabRecord[]
+THERA_FORMATS: readonly string[]
+THERA_FORMAT_RULES: readonly TheraFormatRule[]
 identifyConstantRegion(sequence, from, kind, minIdentity?): ConstantMatch | null
 
 // deneb/abml
@@ -842,6 +1036,8 @@ npm run build     # ESM + CJS + type declarations
 npm run playground   # build, then serve and open examples/playground.html
 npm run readme-images  # rebuild docs/images/ (needs Playwright for the PNGs)
 npm run gallery      # build, then write examples/gallery.html
+npm run thera        # fetch Thera-SAbDab and report what can be drawn
+npm run thera-gallery  # ...and draw the approved therapeutics from it
 npm run adc-demo     # build, then write examples/adc.html
 npm run adc-approved # build, then write examples/adc-approved.html
 npm run moieties     # refetch scripts/lib/moieties.json from PubChem

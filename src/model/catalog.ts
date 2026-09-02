@@ -82,8 +82,12 @@ export const DOMAIN_CATALOG: Record<DomainType, DomainSpec> = {
   cytokine: G('cytokine', 26),
   toxin: G('toxin', 26),
   payload: G('payload', 22),
-  ECD: { ...C('ECD'), colored: true },
-  custom: { ...C(''), colored: true },
+  // Neither pairs: `canPair` has no combination that accepts them, so leaving
+  // them marked pairable only produced a "has no partner" note that nothing
+  // could ever satisfy — and put the positional heavy/light walk out of step by
+  // offering it a slot it could never fill.
+  ECD: { ...C('ECD'), colored: true, pairs: false },
+  custom: { ...C(''), colored: true, pairs: false },
   // composite shorthands; expanded by normalize() and never laid out directly
   scFv: V('scFv'),
   Fab: C('Fab'),

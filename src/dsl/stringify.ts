@@ -20,6 +20,11 @@ function domainToken(d: Domain): string {
  * for.
  */
 function payloadFields(payload: NonNullable<Modification['payload']>): string[] {
+  // Every field the shorthand can express is positioned after the name, so a
+  // payload whose compound has not been chosen yet cannot be written at all.
+  // It is a state only an editor reaches; the JSON keeps it, the DSL says
+  // `drug` and leaves it there.
+  if (!payload.name) return [];
   const fields = [payload.name];
   if (payload.linker) fields.push(payload.linker);
   if (payload.dar != null) fields.push(String(payload.dar));
@@ -37,7 +42,8 @@ function payloadFields(payload: NonNullable<Modification['payload']>): string[] 
 function modToken(m: Modification): string {
   const name = m.type === 'custom' && m.label ? m.label : m.type;
   if (m.payload) {
-    return `${name}=${payloadFields(m.payload).join('/')}`;
+    const fields = payloadFields(m.payload);
+    return fields.length > 0 ? `${name}=${fields.join('/')}` : name;
   }
   const catalog = MODIFICATION_CATALOG[m.type];
   const defaults = catalog?.residues;

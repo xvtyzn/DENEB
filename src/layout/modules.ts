@@ -1,4 +1,5 @@
 import type { NChain, NDomain, NormalizedConstruct } from '../model/types';
+import type { HeavyPartition } from '../model/segments';
 import { DOMAIN_CATALOG, FC_TYPES } from '../model/catalog';
 
 /**
@@ -220,50 +221,7 @@ export function mergeLadders(heavy: Unit[], light: Unit[]): Unit[] {
 // Chain partitioning for the Y skeleton
 // ---------------------------------------------------------------------------
 
-export interface HeavyPartition {
-  /** Everything N-terminal to the hinge/Fc, in N->C order. */
-  nTerm: NDomain[];
-  /** The hinge domain, if the chain has one. */
-  hinge?: NDomain;
-  /** The contiguous CH2/CH3/CH4 run. */
-  fc: NDomain[];
-  /** Everything C-terminal to the Fc, in N->C order. */
-  cTerm: NDomain[];
-}
-
-export function partitionHeavy(chain: NChain): HeavyPartition {
-  const domains = chain.domains;
-  const fcStart = domains.findIndex((d) => FC_TYPES.has(d.type));
-  if (fcStart < 0) {
-    const hingeIdx = domains.findIndex((d) => d.type === 'hinge');
-    if (hingeIdx < 0) return { nTerm: domains, fc: [], cTerm: [] };
-    return {
-      nTerm: domains.slice(0, hingeIdx),
-      hinge: domains[hingeIdx],
-      fc: [],
-      cTerm: domains.slice(hingeIdx + 1),
-    };
-  }
-  let fcEnd = fcStart;
-  while (fcEnd < domains.length && FC_TYPES.has(domains[fcEnd]!.type)) fcEnd++;
-
-  let nEnd = fcStart;
-  let hinge: NDomain | undefined;
-  // The hinge (and any linker immediately before the Fc) belongs to the joint,
-  // not to the arm.
-  while (nEnd > 0 && (domains[nEnd - 1]!.type === 'hinge' || domains[nEnd - 1]!.type === 'linker')) {
-    if (domains[nEnd - 1]!.type === 'hinge') hinge = domains[nEnd - 1];
-    nEnd--;
-  }
-
-  const partition: HeavyPartition = {
-    nTerm: domains.slice(0, nEnd),
-    fc: domains.slice(fcStart, fcEnd),
-    cTerm: domains.slice(fcEnd),
-  };
-  if (hinge) partition.hinge = hinge;
-  return partition;
-}
+export { partitionHeavy, type HeavyPartition } from '../model/segments';
 
 /** Chains that anchor the Y: they carry an Fc, or at least a CH1/hinge. */
 export function armChains(construct: NormalizedConstruct): NChain[] {
@@ -272,6 +230,48 @@ export function armChains(construct: NormalizedConstruct): NChain[] {
   return construct.chains.filter((c) =>
     c.domains.some((d) => d.type === 'CH1' || d.type === 'hinge'),
   );
+}
+
+export type ArmSegment = 'nTerm' | 'cTerm';
+
+/**
+ * Split a heavy chain's light chains by which end of it they actually pair with.
+ *
+ * `lightChainsFor` is position-blind: it hands every light chain to whoever
+ * asks, which is fine while all the Fabs are at the N-terminus and wrong the
+ * moment one is appended after the Fc. The light chain of a C-terminal Fab then
+ * gets stacked onto the arm, half a molecule away from the domains it is
+ * actually holding, and the pairing is drawn as two long dashed lines across
+ * the picture.
+ *
+ * When the chain has nothing after its Fc — which is every bundled format —
+ * this returns exactly what `lightChainsFor` returns, so nothing moves.
+ */
+export function lightChainsBySegment(
+  construct: NormalizedConstruct,
+  heavy: NChain,
+  part: HeavyPartition,
+): Record<ArmSegment, NChain[]> {
+  const lights = lightChainsFor(construct, heavy);
+  if (part.cTerm.length === 0) return { nTerm: lights, cTerm: [] };
+
+  const nIds = new Set(part.nTerm.map((d) => d.id));
+  const cIds = new Set(part.cTerm.map((d) => d.id));
+  const out: Record<ArmSegment, NChain[]> = { nTerm: [], cTerm: [] };
+  for (const chain of lights) {
+    let n = 0;
+    let c = 0;
+    for (const d of chain.domains) {
+      if (!d.partner) continue;
+      if (nIds.has(d.partner)) n++;
+      else if (cIds.has(d.partner)) c++;
+    }
+    // A tie, or a chain that reaches both ends, keeps the arm — which is where
+    // it goes today. The minority contacts then draw as pairing lines, which is
+    // at least visible rather than silent.
+    out[c > n ? 'cTerm' : 'nTerm'].push(chain);
+  }
+  return out;
 }
 
 /** Light chains associated with a given heavy chain, via the pairing graph. */

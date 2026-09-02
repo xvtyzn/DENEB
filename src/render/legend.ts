@@ -177,7 +177,7 @@ function drawStructures(
     const structure = item.payload!.structure!;
     const width = structure.width ?? STRUCTURE_SIZE.width;
     const height = structure.height ?? STRUCTURE_SIZE.height;
-    const caption = structure.caption ?? item.payload!.name;
+    const caption = structure.caption ?? item.payload?.name ?? '';
     // A caption longer than its thumbnail widens the slot, so it is never
     // clipped by the edge of the drawing.
     const slot = Math.max(width, textWidth(caption, theme.legendSize - 0.5));

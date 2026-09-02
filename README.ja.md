@@ -25,7 +25,9 @@ DENEB は、宣言的に記述した抗体構造を埋め込み可能な SVG 模
 - React 版も同じ Scene を実際の SVG 要素として描画し、ドメインのイベントを保持。
 - 模式図、linear アーキテクチャ、凡例のみの 3 ビュー。
 - バイスペシフィック、フラグメント、Fc 融合、ADC など 49 種のプリセット。
-- lint、diff、複数分子パネル、配列 import、AbML、VERITAS は独立したサブパス。
+- クリックして編集する UI を組めるだけの土台 — 編集はそのまま保持し、足りない
+  ところは lint が知らせる。曖昧な対合は**推測せずに候補を返す**。
+- lint、diff、編集、複数分子パネル、配列 import、AbML、VERITAS は独立したサブパス。
 
 ## インストール
 
@@ -130,16 +132,18 @@ PEG などの直鎖反復を残存部分の再作図なしで省略する、と�
 | import | 内容 |
 | --- | --- |
 | `deneb/react` | React ビューアと配列ビュー |
-| `deneb/presets` | 同梱 construct カタログ |
-| `deneb/lint` | 指摘箇所を強調できる設計チェック |
+| `deneb/presets` | 同梱 construct カタログと編集用テンプレート |
+| `deneb/edit` | 編集を保持し、記法が決めている対合だけを決める |
+| `deneb/react/editor` | 編集用フック（見た目は持たない） |
+| `deneb/lint` | 指摘箇所を強調できる設計チェック・完全性チェック |
 | `deneb/diff` | 親と変異体の比較 |
 | `deneb/panel` | 複数分子の図版 |
-| `deneb/import` | ANARCI / IgBLAST アダプタ |
+| `deneb/import` | ANARCI / IgBLAST / Thera-SAbDab アダプタ |
 | `deneb/abml` | AbML v1.06 の読み書き |
 | `deneb/veritas` | VERITAS 名の読み書き |
 | `deneb/chem` | ツールキット互換の化合物作図。座標・向き・反復表記を制御 |
 
-コアは gzip 約 31 kB で、ビューアだけを使うアプリケーションへ任意機能を取り込まない
+コアは gzip 約 32 kB で、ビューアだけを使うアプリケーションへ任意機能を取り込まない
 ことを継続的に検査しています。
 
 ## 試す

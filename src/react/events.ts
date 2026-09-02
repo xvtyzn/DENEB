@@ -50,7 +50,7 @@ export function domainFromEvent(
   return {
     domain,
     chain: construct.chains.find((c) => c.id === domain.chainId),
-    modifications: domain.modifications.map((m) => resolveModification(m, domain.id)),
+    modifications: domain.modifications.map((m, i) => resolveModification(m, domain.id, i)),
     element,
   };
 }
@@ -67,6 +67,18 @@ export function modificationFromEvent(
     closestWith(element, 'data-domain-id')?.getAttribute('data-domain-id') ??
     null;
   const domain = domainId ? construct.byId.get(domainId) : undefined;
-  const raw = domain?.modifications.find((m) => m.type === type) ?? { type: type as never };
-  return { modification: resolveModification(raw, domainId ?? ''), domain, element };
+  // The index, when the mark carries one, says *which* modification was
+  // clicked. Falling back to the first of that type is what the legend needs,
+  // where there is only ever one entry per type.
+  const attr = element.getAttribute('data-modification-index');
+  const index = attr == null ? null : Number(attr);
+  const byIndex =
+    index != null && Number.isInteger(index) ? domain?.modifications[index] : undefined;
+  const raw = byIndex ?? domain?.modifications.find((m) => m.type === type) ?? { type: type as never };
+  const at = byIndex ? index! : (domain?.modifications.indexOf(raw as never) ?? -1);
+  return {
+    modification: resolveModification(raw, domainId ?? '', at >= 0 ? at : undefined),
+    domain,
+    element,
+  };
 }

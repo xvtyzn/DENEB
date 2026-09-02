@@ -308,6 +308,37 @@ export function presetNames(): PresetName[] {
   return Object.keys(PRESET_SOURCES) as PresetName[];
 }
 
+/**
+ * Formats worth starting from, rather than every format there is.
+ *
+ * An editor needs a short list of scaffolds a person recognises — the whole
+ * catalogue is a reference, not a menu. These are ordinary presets; the only
+ * thing that makes them templates is that someone is likely to build on one.
+ */
+export const TEMPLATE_NAMES = [
+  'igg1',
+  'igg1-lala',
+  'igg-kih',
+  'fab',
+  'scfv',
+  'bite',
+  'vhh',
+  'adc-igg',
+] as const satisfies readonly PresetName[];
+
+export type TemplateName = (typeof TEMPLATE_NAMES)[number];
+
+/**
+ * A starting point, ready to edit.
+ *
+ * Unlike `getPreset`, this hands back a construct of your own rather than the
+ * shared cached one, so editing it cannot poison the catalogue for everyone
+ * else on the page.
+ */
+export function getTemplate(name: TemplateName): Construct {
+  return structuredClone(getPreset(name));
+}
+
 /** Lazy map view: `presets['igg-kih']` parses on first access. */
 export const presets: Record<PresetName, Construct> = new Proxy(
   {} as Record<PresetName, Construct>,

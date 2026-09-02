@@ -57,6 +57,7 @@ function resolveModule(base: string): string | null {
 /** Directories the viewer entry must never pull in. */
 const OPTIONAL_AREAS = [
   'src/presets/',
+  'src/edit/',
   'src/lint/',
   'src/diff/',
   'src/import/',
@@ -83,6 +84,27 @@ describe('entry point boundaries', () => {
   it('the React entry does not drag in the presets', () => {
     const react = reachableFrom('src/react/index.ts');
     expect(react.filter((f) => f.startsWith('src/presets/'))).toEqual([]);
+  });
+
+  it('the React entry does not drag in the editor or the linter', () => {
+    // A page that only shows a diagram should not download the edit engine to
+    // do it. `deneb/react/editor` is where that lives.
+    const react = reachableFrom('src/react/index.ts');
+    for (const area of ['src/edit/', 'src/lint/']) {
+      expect(react.filter((f) => f.startsWith(area)), area).toEqual([]);
+    }
+  });
+
+  it('the editor entry does not drag in the renderer', () => {
+    const edit = reachableFrom('src/edit/index.ts');
+    for (const area of ['src/render/', 'src/react/', 'src/presets/']) {
+      expect(edit.filter((f) => f.startsWith(area)), area).toEqual([]);
+    }
+    // `insertionAnchors` is typed in terms of a `LayoutResult`, but only in
+    // terms of it: this walk counts `import type`, which erases, so the file
+    // shows up here while nothing of the layout ships. `npm run size` reads the
+    // built graph and is the check that this stays true.
+    expect(edit.filter((f) => f.startsWith('src/layout/'))).toEqual(['src/layout/types.ts']);
   });
 
   it.each([

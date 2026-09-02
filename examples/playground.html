@@ -20,6 +20,8 @@
   label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
   label:first-child { margin-top: 0; }
   label.inline { display: inline-flex; align-items: center; gap: 4px; margin: 0; font-weight: 400; }
+  #menu { margin-top: 10px; padding: 8px; border: 1px solid #d6dae0; border-radius: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; }
+  #menu select { flex: 1 1 100%; }
   textarea { width: 100%; min-height: 190px; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 8px; border: 1px solid #d6dae0; border-radius: 6px; resize: vertical; }
   select, button { font: inherit; padding: 5px 9px; border: 1px solid #d6dae0; border-radius: 6px; background: #fff; }
   button { cursor: pointer; }
@@ -52,7 +54,9 @@
 <body>
 <header>
   <h1>deneb playground</h1>
-  <p>Antibody construct editor for the compact DSL and AbML v1.06.</p>
+  <p>Antibody construct editor for the compact DSL and AbML v1.06. Tick
+  <b>edit</b> and click a domain to see what can be done there — the edit is
+  kept exactly as made, and whatever is still missing is listed below.</p>
 </header>
 <main>
   <div class="panel">
@@ -77,14 +81,16 @@
       </select>
       <label class="inline"><input type="checkbox" id="labels"> labels</label>
       <label class="inline"><input type="checkbox" id="termini"> N/C</label>
+      <label class="inline"><input type="checkbox" id="edit"> edit</label>
     </div>
     <div class="row">
       <button type="button" id="svg">Download SVG</button>
       <button type="button" id="png">Download PNG</button>
     </div>
     <div id="diagnostics" role="status"></div>
-    <h2 class="check-heading">Design check</h2>
+    <h2 class="check-heading">Design and completeness</h2>
     <ul id="lint"></ul>
+    <div id="menu" hidden></div>
   </div>
   <div class="panel" id="preview">
     <h2>Cartoon</h2>
@@ -100,6 +106,8 @@ import {
   renderSVG, renderLinear, parseDSL, stringifyDSL, downloadSVG, downloadPNG,
 } from '../dist/index.js';
 import { presetNames, getPreset } from '../dist/presets.js';
+import { normalize } from '../dist/index.js';
+import { applyEdit, editTargets, expandForEditing, resolvePairing } from '../dist/edit.js';
 import { LINT_RULES, lint } from '../dist/lint.js';
 import { parseAbML, toAbML } from '../dist/abml.js';
 
@@ -116,6 +124,11 @@ const selected = new Set();
 const heuristicRules = new Set(LINT_RULES.filter((rule) => rule.heuristic).map((rule) => rule.name));
 let current = null;
 let previous = 'dsl';
+// The construct an edit produced, while the box still shows exactly it. The
+// DSL has no syntax for an explicit `Domain.id`, so writing an edited document
+// out and reading it back loses the ids the edit's `@pair` lines refer to —
+// which is why an editor keeps the JSON and treats the text as a view of it.
+let edited = null;
 
 for (const name of presetNames()) {
   const option = document.createElement('option');
@@ -126,16 +139,18 @@ $('preset').value = 'igg-kih';
 
 $('preset').addEventListener('change', loadPreset);
 $('notation').addEventListener('change', switchNotation);
-$('dsl').addEventListener('input', draw);
+$('dsl').addEventListener('input', () => { edited = null; draw(); });
 $('mode').addEventListener('change', draw);
 $('labels').addEventListener('change', draw);
 $('termini').addEventListener('change', draw);
+$('edit').addEventListener('change', () => { closeMenu(); draw(); });
 $('svg').addEventListener('click', () => current && downloadSVG(current.svg, 'antibody.svg'));
 $('png').addEventListener('click', () => current && downloadPNG(current.svg, 'antibody.png'));
 wire();
 loadPreset();
 
 function loadPreset() {
+  edited = null;
   $('dsl').value = notation().write(getPreset($('preset').value));
   selected.clear();
   draw();
@@ -143,7 +158,8 @@ function loadPreset() {
 
 /** Carry whatever is in the box across to the other notation. */
 function switchNotation() {
-  const construct = read($('dsl').value, previous);
+  const construct = edited ?? read($('dsl').value, previous);
+  edited = null;
   if (!construct) {
     previous = $('notation').value;
     loadPreset();
@@ -165,7 +181,7 @@ function read(text, using = $('notation').value) {
 function draw() {
   let construct;
   try {
-    construct = notation().read($('dsl').value);
+    construct = edited ?? notation().read($('dsl').value);
     $('errors').textContent = '';
   } catch (error) {
     current = null;
@@ -182,16 +198,26 @@ function draw() {
     hideTip();
     return;
   }
+  const editing = $('edit').checked;
   const options = {
     colorMode: $('mode').value,
     highlight: [...selected],
     showLabels: $('labels').checked,
     showTermini: $('termini').checked,
+    interactiveMarkers: editing,
     scale: 1.7,
   };
-  current = renderSVG(construct, options);
+  // In edit mode the picture is drawn from what the notation actually
+  // determines, rather than from the positional guess. Anything left over is
+  // reported below instead of being filled in.
+  let drawn = construct;
+  if (editing) {
+    drawn = normalize(construct, { pairing: 'explicit' });
+    resolvePairing(drawn);
+  }
+  current = renderSVG(drawn, options);
   $('stage').innerHTML = current.svg;
-  $('linear').innerHTML = renderLinear(construct, {
+  $('linear').innerHTML = renderLinear(drawn, {
     colorMode: options.colorMode,
     highlight: options.highlight,
     showLabels: options.showLabels,
@@ -204,14 +230,14 @@ function draw() {
 
   const warnings = current.layout.diagnostics.filter((d) => d.level !== 'info');
   $('diagnostics').textContent = warnings.map((d) => `${d.level}: ${d.message}`).join('\n');
-  showLint(construct);
+  showLint(drawn);
 }
 
 // Design findings, and clicking one lights up what it is talking about.
 function showLint(construct) {
   const list = $('lint');
   list.innerHTML = '';
-  const findings = lint(construct);
+  const findings = lint(construct, { includeDiagnostics: false });
   if (findings.length === 0) {
     list.innerHTML = '<li class="clean">Nothing to flag.</li>';
     return;
@@ -252,6 +278,60 @@ function showLint(construct) {
   }
 }
 
+// --- click-to-edit -------------------------------------------------------
+//
+// The menu is built from `editTargets`, so nothing here knows what a domain is
+// or what can be attached to one — that all comes from the catalogues.
+
+function closeMenu() {
+  $('menu').hidden = true;
+  $('menu').replaceChildren();
+}
+
+function openMenu(ref, at) {
+  const construct = edited ?? read($('dsl').value);
+  if (!construct) return;
+  const expanded = expandForEditing(construct);
+  const targets = editTargets(expanded, ref, { mirror: true });
+  const menu = $('menu');
+  menu.replaceChildren();
+
+  const title = document.createElement('b');
+  title.textContent = ref;
+  menu.append(title);
+
+  const picker = document.createElement('select');
+  picker.size = 1;
+  for (const [i, target] of targets.entries()) {
+    const option = document.createElement('option');
+    option.value = String(i);
+    option.textContent = target.tag ? `${target.label} (${target.tag})` : target.label;
+    picker.append(option);
+  }
+  const apply = document.createElement('button');
+  apply.type = 'button';
+  apply.textContent = 'Apply';
+  apply.addEventListener('click', () => {
+    const target = targets[Number(picker.value)];
+    if (!target) return;
+    const next = applyEdit(expanded, target.edit).construct;
+    // The construct is the document; the box is a view of it. Type in the box
+    // and the typing takes over.
+    edited = next;
+    $('dsl').value = stringifyDSL(next);
+    closeMenu();
+    draw();
+  });
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Close';
+  cancel.addEventListener('click', closeMenu);
+
+  menu.append(picker, apply, cancel);
+  menu.hidden = false;
+  void at;
+}
+
 function wire() {
   const tip = $('tip');
   for (const root of [$('stage'), $('linear')]) {
@@ -262,7 +342,13 @@ function wire() {
     });
     root.addEventListener('mouseleave', hideTip);
     root.addEventListener('click', (event) => {
-      toggleDomain(closestDomain(event.target));
+      const group = closestDomain(event.target);
+      // In edit mode a click asks what can be done here; otherwise it selects.
+      if ($('edit').checked && group?.dataset.domainId) {
+        openMenu(group.dataset.domainId, { x: event.clientX, y: event.clientY });
+        return;
+      }
+      toggleDomain(group);
     });
     root.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;

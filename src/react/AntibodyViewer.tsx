@@ -6,11 +6,14 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { buildScene, type SceneOptions } from '../render/scene';
 import { toSVGString } from '../render/svg';
 import type { LayoutResult } from '../layout/types';
 import { SceneSvg } from './toReactElements';
+import type { Point } from '../layout/types';
+import type { DomainRef } from '../model/types';
 import { useConstruct, type ConstructSource } from './useConstruct';
 import {
   domainFromEvent,
@@ -30,6 +33,28 @@ export interface AntibodyViewerProps extends ConstructSource, SceneOptions {
   renderTooltip?: (info: DomainEventInfo) => ReactNode;
   /** Receives the SVG string for the current render, e.g. for export buttons. */
   onRender?: (svg: string, layout: LayoutResult) => void;
+  /**
+   * Domains to ring, on top of anything `highlight` already names. Kept
+   * separate so an editor's selection and a lint result can be shown at once
+   * without either overwriting the other.
+   */
+  selection?: DomainRef[];
+  /** Called with the clicked domain's id, or `null` for a click on the ground. */
+  onSelectionChange?: (ref: DomainRef | null, event: React.MouseEvent) => void;
+  /**
+   * The `<svg>` itself, for measuring, exporting, or attaching a listener this
+   * component does not offer.
+   */
+  svgRef?: Ref<SVGSVGElement>;
+  onContextMenu?: (event: React.MouseEvent) => void;
+  onPointerDown?: (event: React.PointerEvent) => void;
+  tabIndex?: number;
+  /**
+   * What the molecule is translated by inside the viewBox. Handed over on every
+   * render so an overlay — insertion handles, say — can put layout coordinates
+   * in the right place.
+   */
+  onTransform?: (transform: Point) => void;
 }
 
 const TOOLTIP_STYLE: CSSProperties = {
@@ -63,6 +88,13 @@ export function AntibodyViewer(props: AntibodyViewerProps): ReactNode {
     onModificationClick,
     renderTooltip,
     onRender,
+    selection,
+    onSelectionChange,
+    svgRef,
+    onContextMenu,
+    onPointerDown,
+    tabIndex,
+    onTransform,
     ...sceneOptions
   } = props;
 
@@ -72,15 +104,28 @@ export function AntibodyViewer(props: AntibodyViewerProps): ReactNode {
     null,
   );
 
-  const { scene, layout } = useMemo(
-    () => buildScene(source, sceneOptions),
-    [source, JSON.stringify(sceneOptions)],
+  // The selection rides on `highlight`, which already speaks this vocabulary.
+  const options: SceneOptions = useMemo(
+    () =>
+      selection && selection.length > 0
+        ? { ...sceneOptions, highlight: [...(sceneOptions.highlight ?? []), ...selection] }
+        : sceneOptions,
+    [JSON.stringify(sceneOptions), JSON.stringify(selection)],
+  );
+
+  const { scene, layout, transform } = useMemo(
+    () => buildScene(source, options),
+    [source, JSON.stringify(options)],
   );
   const renderedSvg = useMemo(() => toSVGString(scene), [scene]);
 
   useEffect(() => {
     if (onRender) onRender(renderedSvg, layout);
   }, [renderedSvg, layout, onRender]);
+
+  useEffect(() => {
+    if (onTransform) onTransform(transform);
+  }, [transform.x, transform.y, onTransform]);
 
   const handleMove = useCallback(
     (event: React.MouseEvent) => {
@@ -115,8 +160,9 @@ export function AntibodyViewer(props: AntibodyViewerProps): ReactNode {
       if (mod && onModificationClick) onModificationClick(mod, event);
       const info = domainFromEvent(event.target, layout.construct);
       if (info && onDomainClick) onDomainClick(info, event);
+      if (onSelectionChange) onSelectionChange(info?.domain.id ?? null, event);
     },
-    [layout, onDomainClick, onModificationClick],
+    [layout, onDomainClick, onModificationClick, onSelectionChange],
   );
 
   const tooltipNode = tooltip && renderTooltip ? renderTooltip(tooltip.info) : null;
@@ -129,9 +175,13 @@ export function AntibodyViewer(props: AntibodyViewerProps): ReactNode {
     >
       <SceneSvg
         scene={scene}
+        svgRef={svgRef}
+        tabIndex={tabIndex}
         onMouseMove={handleMove}
         onMouseLeave={handleLeave}
         onClick={handleClick}
+        onContextMenu={onContextMenu}
+        onPointerDown={onPointerDown}
       />
       {tooltipNode ? (
         <div style={{ ...TOOLTIP_STYLE, left: tooltip!.x, top: tooltip!.y }}>{tooltipNode}</div>

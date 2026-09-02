@@ -31,6 +31,13 @@ export interface SceneOptions {
   /** Write the name of a conjugated payload next to its glyph. Default true. */
   showPayloadNames?: boolean;
   /**
+   * Let marks and connectors receive pointer events, and give every domain an
+   * element even when it has no glyph of its own, so an editor can click a
+   * conjugation site or a hinge. Off by default: a diagram that is only being
+   * read is easier to use when the whole domain is one target.
+   */
+  interactiveMarkers?: boolean;
+  /**
    * Mark the free N- and C-termini of each chain. Useful when the direction of
    * a single-chain construct matters — a `VH~VL` scFv versus a `VL~VH` one.
    */
@@ -68,6 +75,13 @@ export interface SceneOptions {
 export interface BuiltScene {
   scene: Scene;
   layout: LayoutResult;
+  /**
+   * What `g.dn-molecule` is translated by. The layout works in its own world
+   * coordinates and the scene shifts them to fit the viewBox; add this to a
+   * `PlacedDomain`'s point to put it where the drawing actually is — which is
+   * what an overlay needs, an insertion handle for instance.
+   */
+  transform: Point;
 }
 
 export function buildScene(
@@ -114,7 +128,9 @@ export function buildScene(
   for (const connector of result.connectors) {
     for (const id of connector.skipped ?? []) {
       const domain = construct.byId.get(id);
-      if (!domain || domain.modifications.length === 0) continue;
+      // Without a mark there is nothing to draw — but an editor still needs
+      // something to click, so an interactive scene keeps the frame.
+      if (!domain || (domain.modifications.length === 0 && !options.interactiveMarkers)) continue;
       const frame = skippedFrame(domain, connector);
       skipped.push({ domain, frame });
       surfaceSigns.set(domain.id, (-sideToward(frame, centroid)) as 1 | -1);
@@ -134,7 +150,7 @@ export function buildScene(
   // face it leaves — would draw as a round dot rather than nothing at all.
   const connectorNodes: SceneNode[] = result.connectors
     .filter((c) => c.via?.length || Math.hypot(c.b.x - c.a.x, c.b.y - c.a.y) > 0.05)
-    .map((c) => connectorNode(c, theme));
+    .map((c) => connectorNode(c, theme, options.interactiveMarkers ?? false));
 
   const domainNodes: SceneNode[] = result.domains.map((p) => {
     const node = domainNode(p, {
@@ -142,6 +158,7 @@ export function buildScene(
       colors,
       showLabels,
       showPayloadNames: options.showPayloadNames ?? true,
+      interactiveMarkers: options.interactiveMarkers ?? false,
       showStructures,
       inlineAt,
       surfaceSigns,
@@ -175,6 +192,7 @@ export function buildScene(
     const node = skippedDomainNode(domain, frame, {
       theme,
       showPayloadNames: options.showPayloadNames ?? true,
+      interactiveMarkers: options.interactiveMarkers ?? false,
       inlineStructures: showStructures === 'inline' && inlineAt.has(domain.id),
       centroid,
       prefix,
@@ -237,10 +255,14 @@ export function buildScene(
     });
   }
 
+  const moleculeTransform: Point = {
+    x: -bbox.x + (width - bbox.width) / 2,
+    y: -bbox.y + titleHeight,
+  };
   children.push({
     kind: 'group',
     className: 'dn-molecule',
-    transform: `translate(${round(-bbox.x + (width - bbox.width) / 2)},${round(-bbox.y + titleHeight)})`,
+    transform: `translate(${round(moleculeTransform.x)},${round(moleculeTransform.y)})`,
     children: moleculeChildren,
   });
 
@@ -264,7 +286,7 @@ export function buildScene(
     description: describe(construct),
   };
 
-  return { scene, layout: result };
+  return { scene, layout: result, transform: moleculeTransform };
 }
 
 // ---------------------------------------------------------------------------
@@ -274,6 +296,7 @@ interface DomainContext {
   colors: ReturnType<typeof createColorResolver>;
   showLabels: boolean;
   showPayloadNames: boolean;
+  interactiveMarkers: boolean;
   showStructures: StructureMode;
   /** Domains allowed to draw their payload's structure inline. */
   inlineAt: Set<string>;
@@ -384,6 +407,7 @@ function domainNode(
     rotation: p.rotation,
     theme,
     showPayloadNames: ctx.showPayloadNames,
+    interactiveMarkers: ctx.interactiveMarkers,
     inlineStructures: ctx.showStructures === 'inline' && ctx.inlineAt.has(p.domain.id),
     center: p.center,
     clears: clearanceTest(ctx.glyphs),
@@ -538,6 +562,7 @@ function skippedDomainNode(
   ctx: {
     theme: Theme;
     showPayloadNames: boolean;
+    interactiveMarkers: boolean;
     inlineStructures: boolean;
     centroid: Point;
     prefix: string;
@@ -560,6 +585,7 @@ function skippedDomainNode(
     rotation,
     theme: ctx.theme,
     showPayloadNames: ctx.showPayloadNames,
+    interactiveMarkers: ctx.interactiveMarkers,
     inlineStructures: ctx.inlineStructures,
     center: mid,
     clears: clearanceTest(ctx.glyphs),
@@ -599,14 +625,17 @@ function skippedDomainNode(
   };
 }
 
-function connectorNode(c: Connector, theme: Theme): SceneNode {
+function connectorNode(c: Connector, theme: Theme, interactive = false): SceneNode {
   const base = {
     kind: 'path' as const,
     d: curve(c.a, c.b, c.via),
     fill: 'none',
     strokeLinecap: 'round' as const,
     className: `dn-connector dn-connector-${c.kind}`,
-    pointerEvents: 'none' as const,
+    // A hinge is a line rather than a box, but it is still a domain someone
+    // may want to click. Only in an interactive scene: as a rule a connector
+    // should not steal the pointer from the domains it joins.
+    ...(interactive ? {} : { pointerEvents: 'none' as const }),
     data: {
       'connector-kind': c.kind,
       ...(c.domainA ? { 'domain-a': c.domainA } : {}),

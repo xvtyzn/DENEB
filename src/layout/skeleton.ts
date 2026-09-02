@@ -1,4 +1,9 @@
-import type { Construct, NDomain, NormalizedConstruct } from '../model/types';
+import type {
+  Construct,
+  NChain,
+  NDomain,
+  NormalizedConstruct,
+} from '../model/types';
 import { normalize, resolveRef } from '../model/normalize';
 import { DOMAIN_CATALOG } from '../model/catalog';
 import { resolveTheme, type Theme } from '../theme/theme';
@@ -11,6 +16,7 @@ import {
 } from './links';
 import {
   armChains,
+  lightChainsBySegment,
   lightChainsFor,
   mergeLadders,
   isLinkedPair,
@@ -38,7 +44,8 @@ export function layout(
       ? { placed: layoutRow(construct, theme), extra: [] as Connector[] }
       : layoutY(construct, theme);
 
-  const placed = built.placed;
+  const repeated: string[] = [];
+  const placed = dedupe(built.placed, repeated);
   const byDomainId = new Map(placed.map((p) => [p.domain.id, p]));
   const centroid = centerOf(placed);
 
@@ -65,8 +72,46 @@ export function layout(
     connectors,
     bbox: boundsOf(points, theme.padding),
     byDomainId,
-    diagnostics: construct.diagnostics,
+    diagnostics:
+      repeated.length === 0
+        ? construct.diagnostics
+        : [
+            ...construct.diagnostics,
+            {
+              level: 'error' as const,
+              code: 'domain-placed-twice',
+              ref: repeated[0],
+              message:
+                `${repeated.length} domain(s) were given two places in the drawing ` +
+                `(${repeated.join(', ')}); only the first was kept. Two elements sharing a ` +
+                `data-domain-id make hit-testing and highlighting ambiguous.`,
+            },
+          ],
   };
+}
+
+/**
+ * One glyph per domain.
+ *
+ * A domain claimed by two ladders — a light chain that two heavy chains both
+ * think is theirs, say — used to be drawn twice, with the same `data-domain-id`
+ * on both, which quietly breaks clicking and highlighting. Dropping the second
+ * copy leaves a well-formed picture; the diagnostic says what was dropped.
+ * Returns the same array when there is nothing to do.
+ */
+export function dedupe(placed: PlacedDomain[], repeated: string[]): PlacedDomain[] {
+  const seen = new Set<string>();
+  let clean = true;
+  for (const p of placed) {
+    if (seen.has(p.domain.id)) {
+      clean = false;
+      if (!repeated.includes(p.domain.id)) repeated.push(p.domain.id);
+    }
+    seen.add(p.domain.id);
+  }
+  if (clean) return placed;
+  const kept = new Set<string>();
+  return placed.filter((p) => (kept.has(p.domain.id) ? false : (kept.add(p.domain.id), true)));
 }
 
 /** Half-width of a glyph's footprint on the x axis, after its rotation. */
@@ -139,6 +184,9 @@ function layoutY(construct: NormalizedConstruct, theme: Theme): Built {
 
   const apex: Point = { x: 0, y: -theme.hingeGap };
   const crossed = construct.layout.armMode === 'crossed';
+  // Light chains that belong to a Fab appended after the Fc rather than to the
+  // arm. Empty for every format that has nothing after its Fc.
+  const cTermLights: NChain[][] = heavies.map(() => []);
 
   if (crossed) {
     // Cross-paired variable domains (DART / diabody module) read best as a row
@@ -161,7 +209,9 @@ function layoutY(construct: NormalizedConstruct, theme: Theme): Built {
     const armUnits = heavies.map((heavy, s) => {
       const core: NDomain[] = [];
       const tail: NDomain[] = [];
-      for (const chain of lightChainsFor(construct, heavy)) {
+      const bySegment = lightChainsBySegment(construct, heavy, partitions[s]!);
+      cTermLights[s] = bySegment.cTerm;
+      for (const chain of bySegment.nTerm) {
         // The core is everything up to the last domain that pairs with the
         // heavy chain. A trailing scFv pairs with itself, which is exactly what
         // makes it a fusion rather than part of the Fab.
@@ -273,7 +323,24 @@ function layoutY(construct: NormalizedConstruct, theme: Theme): Built {
     const anchorDomain = part.fc[part.fc.length - 1];
     const anchor = anchorDomain ? byId.get(anchorDomain.id)?.cAnchor : stem.end;
     const dirAngle = 180 + (s === 0 ? splay : -splay);
-    const branch = placeLadder(unitsOfList(part.cTerm), {
+    // A Fab appended after the Fc has a light chain like any other Fab, and it
+    // belongs beside its own partners. Merged the same way the arm is, so the
+    // two halves share a rung instead of being drawn at opposite ends of the
+    // molecule and joined by a line across it. Both lists already run N->C
+    // away from the Fc, so neither is reversed.
+    const lights = cTermLights[s] ?? [];
+    const lightCore = lights.flatMap((chain) => {
+      const lastPaired = chain.domains.reduce((at, d, i) => {
+        const partner = d.partner ? construct.byId.get(d.partner) : undefined;
+        return partner && partner.chainId !== chain.id ? i : at;
+      }, -1);
+      return chain.domains.slice(0, lastPaired + 1);
+    });
+    const branchUnits =
+      lightCore.length === 0
+        ? unitsOfList(part.cTerm)
+        : mergeLadders(unitsOfList(part.cTerm), unitsOfList(lightCore));
+    const branch = placeLadder(branchUnits, {
       origin: anchor ?? stem.end,
       dirAngle,
       glyphAngle: dirAngle - 180,

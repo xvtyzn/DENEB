@@ -9,6 +9,8 @@ export default defineConfig({
         index: 'src/index.ts',
         react: 'src/react/index.ts',
         presets: 'src/presets/index.ts',
+        edit: 'src/edit/index.ts',
+        'react-editor': 'src/react/editor.ts',
         lint: 'src/lint/index.ts',
         diff: 'src/diff/index.ts',
         panel: 'src/render/panel.ts',
@@ -51,6 +53,7 @@ export default defineConfig({
           ) {
             return 'viewer';
           }
+          if (id.includes('/src/edit/')) return 'edit';
           if (id.includes('/src/lint/')) return 'lint-rules';
           if (id.includes('/src/diff/')) return 'diff-engine';
           if (id.includes('/src/import/')) return 'import-adapters';

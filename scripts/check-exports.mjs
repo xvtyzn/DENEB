@@ -17,8 +17,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = mkdtempSync(join(tmpdir(), 'deneb-consumer-'));
 
 const TS = `
-import { renderSVG, parseDSL, normalize, type Construct } from 'deneb';
+import { renderSVG, parseDSL, normalize, layout, type Construct } from 'deneb';
 import { getPreset, presetNames } from 'deneb/presets';
+import { applyEdit, expandForEditing, resolvePairing, editTargets, insertionAnchors } from 'deneb/edit';
+import type { ConstructEditor } from 'deneb/react/editor';
 import { lint } from 'deneb/lint';
 import { diff } from 'deneb/diff';
 import { renderPanel, renderComparison } from 'deneb/panel';
@@ -30,6 +32,13 @@ import { structureFromMolecule, type DepictableMolecule } from 'deneb/chem';
 const construct: Construct = getPreset(presetNames()[0]!);
 renderSVG(construct);
 normalize(parseDSL('HC: VH-CH1'));
+const edited = applyEdit(construct, { op: 'append-fab', chain: construct.chains[0]!.id }).construct;
+expandForEditing(edited);
+resolvePairing(normalize(edited, { pairing: 'explicit' }));
+editTargets(edited, { chain: edited.chains[0]!.id, index: 0 });
+insertionAnchors(layout(edited));
+const editorType: ConstructEditor | null = null;
+void editorType;
 lint(construct);
 diff(construct, construct);
 renderPanel([{ construct }]);

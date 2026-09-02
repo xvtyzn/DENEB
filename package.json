@@ -1,7 +1,7 @@
 {
   "name": "deneb",
   "version": "0.1.0",
-  "description": "DENEB \u2014 Drawing Engine for Notated, Engineered Biologics. Declarative SVG diagrams of antibody formats: bispecific and multispecific architectures, domains coloured by specificity, engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs), ADC conjugation, and the AbML and VERITAS notations.",
+  "description": "DENEB — Drawing Engine for Notated, Engineered Biologics. Declarative SVG diagrams of antibody formats: bispecific and multispecific architectures, domains coloured by specificity, engineering modifications (knob-into-hole, LALA, CrossMab, charge pairs), ADC conjugation, and the AbML and VERITAS notations.",
   "author": "Keigo Ide <keigo.ide@aoni.waseda.jp>",
   "repository": {
     "type": "git",
@@ -57,6 +57,16 @@
       "import": "./dist/presets.js",
       "require": "./dist/presets.cjs"
     },
+    "./react/editor": {
+      "types": "./dist/react/editor.d.ts",
+      "import": "./dist/react-editor.js",
+      "require": "./dist/react-editor.cjs"
+    },
+    "./edit": {
+      "types": "./dist/edit/index.d.ts",
+      "import": "./dist/edit.js",
+      "require": "./dist/edit.cjs"
+    },
     "./lint": {
       "types": "./dist/lint/index.d.ts",
       "import": "./dist/lint.js",
@@ -110,7 +120,9 @@
     "check-exports": "vite build && node scripts/check-exports.mjs",
     "constant-regions": "node scripts/fetch-constant-regions.mjs",
     "panel-demo": "vite build && node scripts/panel-demo.mjs",
-    "readme-images": "vite build && node scripts/readme-images.mjs"
+    "readme-images": "vite build && node scripts/readme-images.mjs",
+    "thera": "vite build && node scripts/fetch-thera.mjs",
+    "thera-gallery": "vite build && node scripts/thera-gallery.mjs"
   },
   "peerDependencies": {
     "react": ">=17",

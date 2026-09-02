@@ -160,6 +160,12 @@ LC: VL(IL17)~VL(TNF)-CL *2
   → 重鎖／軽鎖の位置順マッチ（型ではなく位置なので CrossMab の入れ替えが保たれる）
   → CH2/CH3/CH4 の二量体化、の順。3 番目に注意してください。CODV-Ig から標的名を
   外すと、交差する手掛かりが消えて DVD-Ig になります。`@pair` で明示できます。
+
+  位置順マッチはヒューリスティックで、**Fc の後ろに Fab を足したフォーマットでは
+  誤ります** — 1 本目の軽鎖を 2 本目の重鎖に渡してしまい、残りに手札が尽きます。
+  `{ pairing: 'explicit' }` を渡すと実際に書かれたリンクで止まるので、あとは
+  `deneb/edit` の `resolvePairing` に判定させてください。そちらは正しい答えに
+  到達し、記法が本当に決めていない場合は**何も決めずに選択肢を報告します**。
 - **余ったドメイン** — 相手のいない可変／定常ドメインは報告されます
   （`unpaired-variable-domain` / `unpaired-constant-domain`）。VHH なら正常ですが、
   CH1 なら大抵は誤りです。Fc を持つ鎖が 3 本以上あると `fc-multimer-not-drawn` が
@@ -469,24 +475,26 @@ payload.structure = structureFromMolecule(molecule, {
 ## ビューア以外の機能
 
 描画から先はすべて**独立したサブパス**に置いてあるので、図を描くだけのページが
-それらを読み込むことはありません。コアは gzip 約 31 kB で、プリセット・lint・diff・
-importer・AbML／VERITAS アダプタのいずれにも到達しません（ソースは
+それらを読み込むことはありません。コアは gzip 約 32 kB で、プリセット・編集・lint・
+diff・importer・AbML／VERITAS アダプタのいずれにも到達しません（ソースは
 `tests/boundaries.test.ts`、ビルド成果物は `npm run size` で検証しています）。
 
 | import | gzip | 内容 |
 | --- | --- | --- |
-| `deneb` | 31 kB | モデル・記法・レイアウト・描画 |
-| `deneb/react` | 34 kB | コンポーネント |
-| `deneb/presets` | 12 kB | 同梱 49 フォーマット |
-| `deneb/lint` | 13 kB | 設計チェック |
+| `deneb` | 32 kB | モデル・記法・レイアウト・描画 |
+| `deneb/react` | 36 kB | コンポーネント |
+| `deneb/presets` | 13 kB | 同梱 49 フォーマット |
+| `deneb/edit` | 15 kB | 編集と、記法が決めていることの判定 |
+| `deneb/react/editor` | 21 kB | 編集用フック |
+| `deneb/lint` | 15 kB | 設計チェックと完全性チェック |
 | `deneb/diff` | 12 kB | 親／変異体の比較 |
 | `deneb/panel` | 34 kB | 複数分子の図版 |
-| `deneb/import` | 3.5 kB | ANARCI / IgBLAST アダプタ |
+| `deneb/import` | 5.7 kB | ANARCI / IgBLAST / Thera-SAbDab アダプタ |
 | `deneb/abml` | 14 kB | AbML 記法の読み書き |
 | `deneb/veritas` | 15 kB | VERITAS フォーマット名の読み書き |
 | `deneb/chem` | 4.2 kB | OpenChemLib 互換の描画アダプタ |
 
-### 設計チェック（lint）
+### 設計チェックと完全性チェック（lint）
 
 ```ts
 import { lint } from 'deneb/lint';
@@ -494,11 +502,25 @@ import { lint } from 'deneb/lint';
 for (const f of lint(construct)) console.log(f.level, f.rule, f.message, f.hint);
 ```
 
-描画ではなく**設計**のチェックです — 軽鎖が 2 種あるのにミスペアを防ぐ仕掛けがない、
-knob に対応する hole がない、CD3 エンゲージャーなのに Fc がサイレンス化されていない、
-IgG4 のヒンジが安定化されていない、DAR が 0 以下または組み込みの確認範囲 0–8 を
-超えている、など。各 finding は図の `highlight` にそのまま渡せる `refs` を持つので、
-指摘箇所をそのまま光らせられます。
+2 種類あります。**設計（design）**のルールは分子についてのものです — 軽鎖が 2 種
+あるのにミスペアを防ぐ仕掛けがない、knob に対応する hole がない、CD3 エンゲージャー
+なのに Fc がサイレンス化されていない、IgG4 のヒンジが安定化されていない、DAR が
+0 以下または組み込みの確認範囲 0–8 を超えている、など。**完全性（completeness）**の
+ルールは記述についてのものです — 定常ドメインに相手がいない、対合の候補が複数あって
+決まらない、片方の腕がもう片方の腕の軽鎖を取っている、コンジュゲートサイトの化合物が
+まだ決まっていない、図に現れようがない鎖がある、など。各 finding は図の `highlight`
+にそのまま渡せる `refs` を持つので、指摘箇所をそのまま光らせられます。
+
+既定では両方が走ります。`categories` で片方だけにでき、`includeDiagnostics` で
+`normalize` の診断も同じ配列に混ぜられます（UI に出す一覧を 1 本にするため）。
+
+```ts
+lint(construct, { categories: ['completeness'], includeDiagnostics: true });
+```
+
+`ambiguous-pairing` は `deneb/edit` だけが埋めるフィールドを読むので、
+`resolvePairing` を通した構造体を渡してください。生の `Construct` を渡すと
+`lint` が再度 normalize してしまい、その結果が捨てられます。
 
 命名や一般的な確認範囲を前提にするルールは `LINT_RULES` で `heuristic` と印が
 ついており、個別に無効化できます。
@@ -508,6 +530,98 @@ lint(construct, { disable: ['effector-active-engager', 'dar-out-of-range'] });
 ```
 
 重大度も同様に上書きできます。
+
+### フォーマットを編集する
+
+```ts
+import { applyEdit, expandForEditing, resolvePairing, editTargets } from 'deneb/edit';
+```
+
+ビューアは多くを推定します — どのドメイン同士が組むか、どの軽鎖がどの腕のものか。
+その推定があるから記法は短く済みます。同時にそれが、記法を**編集しにくく**して
+います。編集前は正しかった推定が編集後に誤りになっても、何も言われないからです。
+絵が黙って変わるだけです。
+
+`deneb/edit` は逆の立場を取ります。手順は 3 つです。
+
+**省略記法を実体化する。** `expandForEditing(construct)` は `copies`、`Fab`／`scFv`
+マクロ、共通軽鎖の規則をすべて実際の鎖に展開し、全ドメインに明示 id を与えます。
+与える id は暗黙に振られていたのと**同じ文字列**なので、絵は変わらず、リンクの
+指す先も変わりません。これをしないとドメインは位置で指されるため、1 個挿入する
+だけで以降の id がずれ、`@pair` の参照先が黙って別のドメインに移ります。
+
+**頼まれたことだけをする。** `applyEdit(construct, edit)` は新しい構造体と、触れた
+ドメインの ref を返します。頼まれていないものは一切足しません — VH を足しても VL は
+生えませんし、コンジュゲートサイトを足しても化合物は勝手に決まりません。
+`mirror: true` は構造が同一の鎖すべてに同じ編集を適用します（`*2` を展開したあとに
+「両方の腕」を意味するのはこれです）。唯一、連れてくるものがあるのは `append-fab`
+です。Fab とは両方の半分のことだからで、しかもその 2 つの対合を**推定に委ねず明示
+します**。
+
+```ts
+let construct = expandForEditing(getTemplate('igg1'));
+construct = applyEdit(construct, {
+  op: 'append-fab', chain: 'HC', specificity: 'CD3', mirror: true,
+}).construct;
+```
+
+**構造体が決めていることだけを決める。** `{ pairing: 'explicit' }` で normalize すると
+（実際に書かれたリンクで止まります）、その結果を `resolvePairing` に渡します。
+
+```ts
+const resolved = normalize(construct, { pairing: 'explicit' });
+const report = resolvePairing(resolved);
+report.ambiguous;    // 読み方が複数あるドメイン
+report.suggestions;  // [{ ref, candidates, hint: '@pair HC:6 LC2:1' }]
+```
+
+構造体から答えが導けるところは決め、導けないところは決めません。Fc の後ろに Fab を
+足した IgG（軽鎖 4 本・重鎖 2 本）では、既定の推定は 1 本目の軽鎖を 2 本目の重鎖に
+渡してしまい、そこで手札が尽きて定常ドメイン 6 個が孤立し、片方の腕がもう片方の腕の
+軽鎖を持ちます。白紙から決め直すと、`@pair` を 1 行も書かずに 4 つの Fab すべてが
+正しく組まれます。標的名まで無い場合は何も組まず、選択肢をドメインごとに報告します。
+
+同梱 49 フォーマットでは、厳密な答えは推定の答えと**完全に一致**し、指摘は 0 件です。
+この一致自体をテストで固定してあるので、2 つの実装が離れていくことはありません。
+
+操作の語彙は記法と対応します。`set-pair` / `clear-pair` が `@pair`、
+`set-disulfide` / `clear-disulfide` が `@ss` にあたり、残りは
+`insert-domain` / `remove-domain` / `replace-domain` / `add-modification` /
+`add-conjugation` / `add-chain` / `remove-chain` / `set-specificity` / `rename`
+です。
+
+**メニューと挿入点。** `editTargets(construct, ref | insertPoint)` は、クリックされた
+場所で可能な編集の一覧をドメイン／改変カタログから組み立てます（アプリ側にドメイン
+一覧を書かせないため）。`insertionAnchors(layout)` はドメインを挿入できる隙間ごとに
+点を返します。座標はレイアウトのものなので、`BuiltScene.transform` を足すと図に
+重ねられます。シーンに `interactiveMarkers: true` を渡すとコンジュゲートのマーカーと
+ヒンジがクリック可能になり、各マーカーに `data-modification-index` が付きます。
+渡さなければ描画は 1 バイトも変わりません。
+
+### React での編集
+
+```tsx
+import { useConstructEditor } from 'deneb/react/editor';
+
+const { construct, resolved, findings, apply, undo, selection, select } =
+  useConstructEditor({ initial: getTemplate('igg1') });
+
+<AntibodyViewer
+  construct={resolved}
+  interactiveMarkers
+  selection={selection}
+  onSelectionChange={(ref) => select(ref)}
+/>
+```
+
+フックが持つのは、ドキュメント・履歴・選択・findings だけです。**見た目については
+何も決めません** — メニューもパネルもスタイルもアプリ側のものです。`deneb/react` では
+なく独立したエントリにしてあるのは、図を表示するだけのページが編集エンジンを
+ダウンロードしなくて済むようにするためです。
+
+編集の正体は DSL ではなく `Construct`（JSON）です。`stringifyDSL` で書き出せますが、
+DSL には `Domain.id` を書く構文がないため、テキストを往復させると id が失われ、
+ドメインの指し方が位置に戻ります。JSON を保持し、DSL は表示と共有に使ってください。
 
 ### 親と変異体の比較
 
@@ -561,6 +675,44 @@ Kabat / Chothia の範囲を記憶で書くと、入力配列の CDR を誤っ�
 （P01857, P01859, P01861, P01834, P0CG04）し、`npm run constant-regions` で再生成できます。
 手で書き写してはいません。照合はギャップなしで行い、`minIdentity` を下回るものは
 推測せず残基範囲付きの未同定セグメントとして残します。
+
+### 医薬品データベースから始める
+
+```ts
+import { fromTheraSAbDab, parseTheraSAbDabCsv } from 'deneb/import';
+
+const rows = parseTheraSAbDabCsv(await (await fetch(DOWNLOAD)).text());
+for (const row of rows) {
+  const { construct, diagnostics } = fromTheraSAbDab(row);
+  if (construct.chains.length > 0) renderSVG(construct);
+}
+```
+
+[Thera-SAbDab](https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/therasabdab/)
+は WHO が認めた抗体医薬の一覧で、その `Format` 列は**この分野で最も統制語彙に近いもの**です。
+各行には重鎖クラス・軽鎖クラス・標的も入っていて、模式図に必要なものが揃っています。
+`fromTheraSAbDab` が 1 行を、`parseTheraSAbDabCsv` がその元になるダウンロードを読みます。
+
+データベース全体（**1133 件**）に対して実測すると、16 個の形式規則で
+**1015 件（89.6%、うち承認薬 190 件）**が描け、曖昧さゼロ・レイアウト失敗ゼロでした。
+残りは 1 分子ずつを説明する自由記述で
+（`Bispecific ((G1_L-kappa)_scFv-G1(h-CH2-CH3))` は「その 1 剤が何か」は言いますが
+「次の行をどう読むか」は何も言いません）、**推測せず error で断ります**。
+規則表は `THERA_FORMAT_RULES` として公開してあり、読んで反論できます。
+
+データベースが**記録していない**ことは 3 種類あり、それぞれこう扱います。
+
+| 記録されていないもの | 描くもの | 言うこと |
+| --- | --- | --- |
+| ADC のリンカーが結合する位置 | CH2 にマーク | `thera-not-stated`：置き場所であって、残基の主張ではない |
+| バイスペシフィックの重鎖ヘテロ二量体化の方法 | 何も描かない | `deneb/lint` が `homodimer-risk` を出す。それに触れていない記述に対して正しい指摘 |
+| CrossMab がどの界面で入れ替わるか | 入れ替えを描かない | `thera-not-stated`：候補 3 つを挙げて言う |
+
+データベースは**同梱しません**。他者のデータセットであり、新しい INN が提案されるたびに
+改訂されるので、パッケージ内のコピーは黙って古くなります。`npm run thera` で取得と
+被覆率の計測、`npm run thera-gallery` で 1 ページ描画（`examples/thera.html`）ができます。
+
+引用は Raybould et al., *Nucleic Acids Research* 48:D383 (2020)。
 
 ### AbML の読み書き
 

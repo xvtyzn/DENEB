@@ -158,8 +158,14 @@ export interface PayloadStructure {
  * details land in the legend.
  */
 export interface Payload {
-  /** Compound name, e.g. 'MMAE'. Drawn beside the glyph. */
-  name: string;
+  /**
+   * Compound name, e.g. 'MMAE'. Drawn beside the glyph.
+   *
+   * Optional, because a conjugation site is a real thing before the compound
+   * on it has been chosen — which is the state an editor is in the moment
+   * someone adds one. Nothing downstream assumes it is there.
+   */
+  name?: string;
   /** Chemical linker, e.g. 'vc-PAB', 'SMCC'. */
   linker?: string;
   /** Drug-to-antibody ratio for the whole molecule. */
@@ -257,6 +263,15 @@ export interface Chain {
   id: string;
   /** Inferred from the domain composition when omitted. */
   kind?: ChainKind;
+  /**
+   * For a light chain, the heavy chain it associates with.
+   *
+   * Worth stating whenever the arms are alike enough that nothing else
+   * distinguishes them — two identical light chains, or a common one written
+   * once and shared. Left out, it is worked out from the pairing; said
+   * outright, it cannot be got wrong.
+   */
+  partnerChain?: string;
   sequence?: string;
   domains: Domain[];
   /**
@@ -307,6 +322,36 @@ export interface Diagnostic {
   ref?: string;
 }
 
+/** Which rule settled a domain's `partner`. */
+export type PairingRule =
+  | 'explicit'
+  | 'replicated'
+  | 'intra-chain'
+  | 'specificity'
+  | 'heavy-light'
+  | 'fc';
+
+/**
+ * How a domain's `partner` was arrived at.
+ *
+ * Filled only by `deneb/edit`; a plain `normalize()` leaves it undefined and
+ * nothing in the viewer reads it. It exists so an editor can tell "this is
+ * settled" from "this could go either way" — the distinction that decides
+ * whether a picture is a statement or a guess.
+ */
+export interface PairingResolution {
+  state: 'resolved' | 'ambiguous' | 'none';
+  /** Absent for `state: 'none'`. */
+  by?: PairingRule;
+  /**
+   * Everything this domain could legitimately have paired with, before
+   * interchangeable copies were collapsed. More than one with
+   * `state: 'resolved'` means the candidates were interchangeable, not that a
+   * choice was made between distinguishable options.
+   */
+  candidates?: DomainRef[];
+}
+
 /** A domain after normalization: every optional field the layout needs is filled. */
 export interface NDomain {
   id: string;
@@ -324,6 +369,8 @@ export interface NDomain {
   modifications: Modification[];
   /** Domain id this one is non-covalently paired with (VH<->VL, CH1<->CL, CH3<->CH3'). */
   partner?: string;
+  /** How `partner` was decided. Filled only by `deneb/edit`. */
+  pairing?: PairingResolution;
 }
 
 export interface NChain {
@@ -333,6 +380,14 @@ export interface NChain {
   domains: NDomain[];
   /** Set when this chain was materialised from another (homodimer / common LC). */
   cloneOf?: string;
+  /**
+   * True when this copy exists because one light chain was found to serve
+   * several arms — an inference drawn from the *absence* of another light
+   * chain, rather than a shorthand anybody wrote. `deneb/edit` leaves these out
+   * of the document it hands back for editing, so that editing the shared light
+   * chain goes on meaning "both arms".
+   */
+  inferredCopy?: boolean;
   /** Heavy chain this light chain associates with, when known unambiguously. */
   partnerChain?: string;
 }

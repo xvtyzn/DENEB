@@ -23,6 +23,14 @@ import { resolveTheme, type Theme } from '../theme/theme';
 
 export interface NormalizeOptions {
   theme?: Partial<Theme>;
+  /**
+   * `'infer'` (the default) fills in pairing the way it always has. `'explicit'`
+   * stops after the links the author actually wrote, leaving the rest to
+   * `deneb/edit`, which decides only what it can justify and reports the rest.
+   * An editor wants that: a guess that goes wrong is worse than a gap, because
+   * a gap can be shown and a wrong guess cannot.
+   */
+  pairing?: 'infer' | 'explicit';
 }
 
 /**
@@ -60,9 +68,14 @@ export function normalize(construct: Construct, options: NormalizeOptions = {}):
   const links: Link[] = [...(construct.links ?? [])];
   replicateLinks(links, chains, byId, diagnostics);
   applyExplicitPairs(links, chains, byId, diagnostics);
-  pairIntraChain(chains);
-  pairAcrossVariableDomains(chains);
-  pairHeavyLight(chains, diagnostics);
+  const infer = options.pairing !== 'explicit';
+  if (infer) {
+    pairIntraChain(chains);
+    pairAcrossVariableDomains(chains);
+    pairHeavyLight(chains, diagnostics);
+  }
+  // `pairFc` runs either way: it emits the `dimer` links the renderer draws the
+  // Fc contact from, which is structure rather than a guess about pairing.
   const dimerLinks = pairFc(chains, diagnostics);
   links.push(...dimerLinks);
 
@@ -73,7 +86,7 @@ export function normalize(construct: Construct, options: NormalizeOptions = {}):
     }
   }
 
-  reportUnpaired(chains, diagnostics);
+  if (infer) reportUnpaired(chains, diagnostics);
 
   return {
     name: construct.name,
@@ -188,7 +201,11 @@ function buildChain(chain: Chain, chainId: string, diagnostics: Diagnostic[]): N
     }
   }
 
-  return { id, kind: chain.kind ?? 'single', sequence: chain.sequence, domains };
+  const out: NChain = { id, kind: chain.kind ?? 'single', sequence: chain.sequence, domains };
+  // Carried through so that expanding a shorthand and reading it back does not
+  // lose which heavy chain a light chain belongs to.
+  if (chain.partnerChain) out.partnerChain = chain.partnerChain;
+  return out;
 }
 
 function isHeavyBackbone(chain: NChain): boolean {
@@ -256,6 +273,7 @@ function materializeCommonLightChain(chains: NChain[], diagnostics: Diagnostic[]
       kind: source.kind,
       sequence: source.sequence,
       cloneOf: source.id,
+      inferredCopy: true,
       partnerChain: heavies[i - 1]!.id,
       domains: source.domains.map((d) => ({
         ...d,

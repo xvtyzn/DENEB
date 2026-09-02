@@ -175,7 +175,7 @@ export function renderLinear(
       // Modification ticks sit above the bar, at their residue position when
       // one is known and centred on the domain otherwise.
       d.modifications.forEach((m, i) => {
-        const r = resolveModification(m, d.id);
+        const r = resolveModification(m, d.id, i);
         const key = modificationLegendKey(r);
         if (!usedModifications.has(key)) usedModifications.set(key, r);
         const px =

@@ -43,7 +43,7 @@ function weigh(files) {
   return { raw, gzip };
 }
 
-const entries = ['index', 'react', 'presets', 'lint', 'diff', 'panel', 'import', 'abml', 'veritas', 'chem']
+const entries = ['index', 'react', 'presets', 'edit', 'react-editor', 'lint', 'diff', 'panel', 'import', 'abml', 'veritas', 'chem']
   .map((name) => ({ name, file: resolve(root, `dist/${name}.js`) }))
   .filter((e) => existsSync(e.file));
 
@@ -67,6 +67,8 @@ const coreText = core.map((file) => readFileSync(file, 'utf8')).join('\n');
 const optionalMarkers = [
   ['react', 'antibody-sequence'],
   ['presets', 'VH(CD3)'],
+  ['edit', 'light-chain-unanchored'],
+  ['react-editor', 'useConstructEditor'],
   ['lint', 'igg4-fab-arm-exchange'],
   ['diff', 'chain-removed'],
   ['panel', 'dn-panel'],
